@@ -22,14 +22,23 @@ def _cfg() -> tuple[str, str]:
     return url, key
 
 
-def _post(table: str, rows: list[dict], *, ignore_dupes: bool) -> None:
+def _post(table: str, rows: list[dict], *, on_conflict: str | None = None) -> None:
+    """POST rows to PostgREST.
+
+    `on_conflict` must name the unique constraint's columns. PostgREST resolves
+    conflicts against the PRIMARY KEY unless told otherwise, and ours is the
+    surrogate `id`, so without this a re-run collides with the composite
+    (listing_id, scraped_at) constraint and 409s instead of being ignored.
+    """
     url, key = _cfg()
+    endpoint = f"{url}/rest/v1/{table}"
     prefer = "return=minimal"
-    if ignore_dupes:
+    if on_conflict:
+        endpoint += f"?on_conflict={on_conflict}"
         prefer += ",resolution=ignore-duplicates"
 
     req = urllib.request.Request(
-        f"{url}/rest/v1/{table}",
+        endpoint,
         data=json.dumps(rows).encode(),
         headers={
             "apikey": key,
@@ -66,7 +75,8 @@ def save_snapshots(records: list[dict], scraped_at: date | None = None) -> int:
     } for r in records]
 
     for i in range(0, len(rows), BATCH):
-        _post("listing_snapshot", rows[i:i + BATCH], ignore_dupes=True)
+        _post("listing_snapshot", rows[i:i + BATCH],
+              on_conflict="listing_id,scraped_at")
     return len(rows)
 
 
@@ -76,4 +86,4 @@ def log_run(source: str, rows_ok: int, rows_failed: int, status: str) -> None:
         "rows_ok": rows_ok,
         "rows_failed": rows_failed,
         "status": status,
-    }], ignore_dupes=False)
+    }])
