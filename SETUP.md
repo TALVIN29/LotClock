@@ -21,18 +21,26 @@ You should see `Success. No rows returned`.
 
 ### Get your keys
 
-Dashboard → **Project Settings** → **API**. You need two values:
+Dashboard → **Settings** → **API Keys**. You need two values:
 
 | field | where |
 |---|---|
 | `SUPABASE_URL` | "Project URL" — looks like `https://abcdefgh.supabase.co` |
-| `SUPABASE_SERVICE_KEY` | "Project API keys" → **`service_role`** → reveal & copy |
+| `SUPABASE_SERVICE_KEY` | a **secret key** (`sb_secret_...`) — or, on older projects, the legacy **`service_role`** key. Either works. |
 
-> **The `service_role` key bypasses row-level security.** Anyone holding it can
-> read and delete your entire database. It goes in GitHub Secrets and your local
-> `.env` — never in code, never in a commit, never in a screenshot. If it ever
-> leaks, rotate it immediately in the same dashboard page and treat it as
-> compromised from the moment it was exposed, even if you delete the commit.
+Supabase runs two key systems side by side: the newer publishable/secret keys
+(`sb_publishable_...` / `sb_secret_...`) and the legacy `anon` / `service_role`
+JWTs. We need the **elevated** one — secret or service_role — because the
+collector writes on a schedule with no user session to authorise it.
+
+> **This key bypasses row-level security.** Anyone holding it can read and delete
+> your entire database. It goes in GitHub Secrets and your local `.env` — never
+> in code, never in a commit, never in a screenshot, never pasted into a chat.
+> If it ever leaks, rotate it immediately on this same dashboard page and treat
+> it as compromised from the moment it was exposed, even if you delete the commit.
+>
+> Never use the **publishable**/`anon` key here — it is deliberately powerless
+> and the writes will fail with a 401.
 
 ---
 
