@@ -28,15 +28,18 @@ Full walkthrough: `SETUP.md`
 ## Phases
 
 - [x] 0. `PROGRESS.md`
-- [ ] 1. Collector on cloud cron  ← **current**
+- [ ] 1. Collector  ← **current**
   - [x] Recon: source selection, robots.txt, rendering check
   - [x] Parser + 5 tests passing on a real saved page
   - [x] Fetcher (5s crawl-delay, honest UA, retry/backoff)
   - [x] Supabase writer (append-only, idempotent)
-  - [x] GitHub Actions workflow + dead-man's switch wiring
-  - [ ] Supabase project created, `schema.sql` run
-  - [ ] Repo secrets set, first manual run green
-  - [ ] **7 consecutive unattended days**
+  - [x] GitHub Actions workflow — **built, but 403'd by Cloudflare**
+  - [x] Supabase project created, `schema.sql` run
+  - [x] Repo secrets set
+  - [x] **First run verified end-to-end — 216 rows in the database**
+  - [ ] Windows scheduled task registered
+  - [ ] Second day's run — proves the time series
+  - [ ] 7 days of collection
 - [ ] 2. Spec join table + government data (JPJ, fuel, OPR)
 - [ ] 3. Entity resolution + credibility scorer
 - [ ] 4. Model v0
@@ -50,11 +53,6 @@ Full walkthrough: `SETUP.md`
 - [ ] **≥1 price change captured for the same `listing_id`** ← the real gate
 - [ ] ≥1 delisting captured
 - [ ] Dead-man's switch verified by deliberately breaking it
-
-## Collection log
-
-| date | rows scraped | new listings | delisted | status |
-|------|--------------|--------------|----------|--------|
 
 ## Decisions made (and why)
 
