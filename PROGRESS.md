@@ -1,24 +1,34 @@
 # LotClock — Progress
 
-**Status:** phase 1 — **collecting.** First 216 rows landed in Supabase.
+**Status:** phase 1 — **collecting.** 2,016 rows in Supabase, task scheduled daily.
 **Repo:** https://github.com/TALVIN29/LotClock (public, `main` is default)
 **Data collection started: 2026-07-19** ← day 0 of the only asset that compounds
-**Hours spent:** ~4 / 18
-**Last session:** 2026-07-19 — Supabase live, first end-to-end run verified,
-GitHub Actions found blocked by Cloudflare (see blocker below)
+**Hours spent:** ~5 / 18
+**Last session:** 2026-07-19 — Supabase live, 2,016 rows collected and verified,
+scheduled task registered and test-fired, idempotency bug found and fixed.
+GitHub Actions remains blocked by Cloudflare (see blocker below).
 
 **Next action (start here):**
-1. Register the Windows scheduled task (command in `SETUP.md` §7) so collection
-   runs daily without being asked
-2. **Tomorrow: run the gate query** — a price that moved is the whole thesis:
+1. **Tomorrow after 10am, run the gate query.** A price that moved is the entire
+   thesis — nothing downstream exists without it:
    ```sql
    select listing_id, min(price_myr) lo, max(price_myr) hi, count(*) snaps
    from listing_snapshot group by 1 having min(price_myr) <> max(price_myr);
    ```
-3. Email motortrader.com.my requesting Cloudflare allowlisting (draft in chat
-   2026-07-19) — highest-value 10 minutes available, unblocks unattended runs
-4. Optional: Oracle always-free VM. **Test with one curl before configuring
-   anything** — Oracle is also a datacenter ASN and may get the same 403
+   Also confirm two distinct dates exist:
+   ```sql
+   select scraped_at, count(*) from listing_snapshot group by 1 order by 1;
+   ```
+2. Email motortrader.com.my requesting Cloudflare allowlisting (draft in chat
+   2026-07-19) — best 10 minutes available; unblocks genuinely unattended runs
+3. Optional: Oracle always-free VM. **Test with one curl before configuring
+   anything** — Oracle is also a datacenter ASN and may get the same 403:
+   ```
+   curl -s -o /dev/null -w "%{http_code}\n" -A "LotClock/0.1 (+https://github.com/TALVIN29/LotClock)" "https://www.motortrader.com.my/car/index?page=1"
+   ```
+
+Scheduled task: `LotClock daily scrape`, daily 10:00 MYT, wakes from sleep,
+catches up missed runs. Logs to `logs/scrape.log`.
 
 Full walkthrough: `SETUP.md`
 
