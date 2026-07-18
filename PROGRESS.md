@@ -112,6 +112,36 @@ Options under consideration (see chat 2026-07-18):
 This is Porter's "supplier power: VERY HIGH" materialising on day one, exactly as
 predicted. Worth writing up in the README as a finding rather than hiding.
 
+## Source survey 2026-07-19 — why motortrader, and what else exists
+
+Surveyed every Malaysian used-car site I could find. Motortrader was not a
+preference; it was the only one clean on all three axes at once — permitted by
+robots, reachable from a script, and server-rendering prices into HTML.
+
+| site | robots.txt | reachable | rendering | verdict |
+|---|---|---|---|---|
+| **motortrader** | `Allow: /`, `Crawl-delay: 5` | 200 | server-rendered, 34/page | **in use** |
+| carsome | permissive | 200 | Nuxt payload, parseable w/o browser | **best 2nd source** |
+| carsifu | `Allow: /` | 200 | client-side XHR | needs Playwright |
+| carousell | permissive on listings | 200 | heavy JS, 1.6MB pages | low priority |
+| mytukar | `Disallow:` (empty) | redirects to carro.co | no listings in sitemap | dead end |
+| carlist | permits crawling | **403** | — | Cloudflare blocks scripts |
+| **mudah** | **"expressly forbidden to use spiders"** | — | — | **excluded on principle** |
+| **carbase** | **`Disallow: /cars-for-sale/`** | — | — | **excluded on principle** |
+| **wapcar** | `Allow: /` but **`Content-Signal: ai-train=no`** | — | — | **excluded on principle** |
+| oto, carking, carvara, icarsclub | — | DNS fail / timeout | — | dead sites |
+
+**Three exclusions are ethical, not technical** — all three are reachable. Wapcar
+is the notable one: its robots.txt says `Allow: /`, so a robots-only check passes
+it. The `Content-Signal: ai-train=no` header is what refuses it, and this project
+trains a model on what it collects. Scraping it would be technically compliant
+and substantively dishonest. Worth stating in the README.
+
+Next source when redundancy is wanted: **carsome** — Nuxt embeds its data in the
+page, so it parses with stdlib and needs no browser, consistent with the current
+zero-dependency design. Not now though: one working source collecting daily beats
+two half-built ones.
+
 ## Known limitations (record honestly, do not hide)
 
 - **Mileage is banded at source** (`75k-79k`), not exact. Midpoint imputation
