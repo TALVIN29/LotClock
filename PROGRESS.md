@@ -1,11 +1,21 @@
 # LotClock — Progress
 
-**Status:** in progress — phase 1 (collector)
+**Status:** in progress — phase 1 (collector). Code pushed, awaiting Supabase.
+**Repo:** https://github.com/TALVIN29/LotClock (public, `main` is default)
 **Data collection started:** _not yet — set this the day the Action first runs_
 **Hours spent:** ~3 / 18
-**Last session:** 2026-07-19 — recon + scraper built and passing against live site
-**Next action:** create the Supabase project, run `schema.sql`, add the two repo
-secrets, then trigger `daily-scrape` manually once
+**Last session:** 2026-07-19 — recon, scraper built, 5 tests green, pushed to GitHub
+
+**Next action (start here):**
+1. Create Supabase project → SQL Editor → paste `schema.sql` → Run
+2. Project Settings → API → copy Project URL + `service_role` key
+3. GitHub repo → Settings → Secrets and variables → Actions → add
+   `SUPABASE_URL` and `SUPABASE_SERVICE_KEY`
+4. Actions tab → `daily-scrape` → Run workflow
+5. Verify in Supabase: `select scraped_at, count(*) from listing_snapshot group by 1;`
+6. **Run it again tomorrow** — that second day is the real gate
+
+Full walkthrough with screenshots-worth of detail: `SETUP.md`
 
 > `Next action` is the anti-abandonment field. Update it at the **end** of every
 > session, never the start. Future-you reads this first.
