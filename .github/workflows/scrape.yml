@@ -1,0 +1,49 @@
+name: daily-scrape
+
+on:
+  schedule:
+    # 02:00 UTC = 10:00 MYT. Off-peak for a Malaysian site.
+    - cron: "0 2 * * *"
+  workflow_dispatch:        # lets you trigger a run by hand from the Actions tab
+
+# Two runs writing the same day's rows would be harmless (the unique constraint
+# makes it idempotent) but there is no reason to double the load on their site.
+concurrency:
+  group: daily-scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90      # full pass is ~47 min; this catches a hang
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # No pip install: the scraper is stdlib-only.
+
+      - name: Run scraper
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          HEALTHCHECK_URL: ${{ secrets.HEALTHCHECK_URL }}
+          SCRAPE_DELAY_SECONDS: "5"
+          SCRAPE_MAX_LISTINGS: "2000"
+          SCRAPE_MIN_EXPECTED: "200"
+        run: python -m scraper.run
+
+  # Runs on the same schedule so a parser broken by a site redesign is caught
+  # even when the scrape itself still "succeeds".
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python -m pytest tests -q

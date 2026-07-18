@@ -1,0 +1,3 @@
+# The scraper itself has NO runtime dependencies — stdlib urllib only.
+# This file exists for the test runner.
+pytest>=8.0
