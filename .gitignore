@@ -21,3 +21,4 @@ web/out/
 # scraped data lives in Supabase, not the repo
 data/
 *.db
+logs/

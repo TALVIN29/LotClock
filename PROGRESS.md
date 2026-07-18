@@ -1,21 +1,26 @@
 # LotClock — Progress
 
-**Status:** in progress — phase 1 (collector). Code pushed, awaiting Supabase.
+**Status:** phase 1 — **collecting.** First 216 rows landed in Supabase.
 **Repo:** https://github.com/TALVIN29/LotClock (public, `main` is default)
-**Data collection started:** _not yet — set this the day the Action first runs_
-**Hours spent:** ~3 / 18
-**Last session:** 2026-07-19 — recon, scraper built, 5 tests green, pushed to GitHub
+**Data collection started: 2026-07-19** ← day 0 of the only asset that compounds
+**Hours spent:** ~4 / 18
+**Last session:** 2026-07-19 — Supabase live, first end-to-end run verified,
+GitHub Actions found blocked by Cloudflare (see blocker below)
 
 **Next action (start here):**
-1. Create Supabase project → SQL Editor → paste `schema.sql` → Run
-2. Project Settings → API → copy Project URL + `service_role` key
-3. GitHub repo → Settings → Secrets and variables → Actions → add
-   `SUPABASE_URL` and `SUPABASE_SERVICE_KEY`
-4. Actions tab → `daily-scrape` → Run workflow
-5. Verify in Supabase: `select scraped_at, count(*) from listing_snapshot group by 1;`
-6. **Run it again tomorrow** — that second day is the real gate
+1. Register the Windows scheduled task (command in `SETUP.md` §7) so collection
+   runs daily without being asked
+2. **Tomorrow: run the gate query** — a price that moved is the whole thesis:
+   ```sql
+   select listing_id, min(price_myr) lo, max(price_myr) hi, count(*) snaps
+   from listing_snapshot group by 1 having min(price_myr) <> max(price_myr);
+   ```
+3. Email motortrader.com.my requesting Cloudflare allowlisting (draft in chat
+   2026-07-19) — highest-value 10 minutes available, unblocks unattended runs
+4. Optional: Oracle always-free VM. **Test with one curl before configuring
+   anything** — Oracle is also a datacenter ASN and may get the same 403
 
-Full walkthrough with screenshots-worth of detail: `SETUP.md`
+Full walkthrough: `SETUP.md`
 
 > `Next action` is the anti-abandonment field. Update it at the **end** of every
 > session, never the start. Future-you reads this first.
@@ -72,6 +77,33 @@ Full walkthrough with screenshots-worth of detail: `SETUP.md`
   Every card shows both (`RM 170,888` and `RM 2,304 / month`); confusing them is
   the classic bait-price bug. A test asserts they never cross.
 
+## ⚠️ Blocker found 2026-07-18: motortrader 403s GitHub Actions IPs
+
+First real workflow run failed: `HTTP 403` on every page, run
+[29654172225](https://github.com/TALVIN29/LotClock/actions/runs/29654172225).
+
+Diagnosed as purely IP-range based — identical code, user-agent and timing
+returned `200` from a non-cloud IP and `403` from the GitHub runner in the same
+minute. GitHub Actions runs on Azure ranges that most WAFs block wholesale.
+Their robots.txt still permits crawling at `Crawl-delay: 5`; it is the edge
+infrastructure blocking cloud IPs generically, not a policy against us.
+
+**Not doing:** proxy rotation, IP spoofing, CAPTCHA solving. Honouring robots.txt
+while routing around the WAF that enforces it would defeat the point of the
+project.
+
+**The failure handling worked** — loud exit 1, `under_threshold` logged, no
+silent green run over an empty database. That part of the design is validated.
+
+Options under consideration (see chat 2026-07-18):
+- A. Windows Task Scheduler on the builder's PC — works today, gaps when off
+- B. Oracle Cloud always-free VM — genuinely unattended, non-Azure IP
+- C. Email motortrader.com.my requesting access for a student research project
+- D. Switch source again — weak: carlist blocks harder, mudah forbids outright
+
+This is Porter's "supplier power: VERY HIGH" materialising on day one, exactly as
+predicted. Worth writing up in the README as a finding rather than hiding.
+
 ## Known limitations (record honestly, do not hide)
 
 - **Mileage is banded at source** (`75k-79k`), not exact. Midpoint imputation
@@ -87,3 +119,9 @@ Full walkthrough with screenshots-worth of detail: `SETUP.md`
   should cover one check — verify)
 - Full pass is ~563 pages ≈ 47 min. Start capped at 2,000 listings; decide later
   whether the full 12,954 daily is worth the load on their server.
+
+## Collection log (append each run)
+
+| date | rows | source | notes |
+|------|------|--------|-------|
+| 2026-07-19 | 216 | local PC | first verified end-to-end run; GitHub Actions 403 |
