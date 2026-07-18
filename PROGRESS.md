@@ -37,8 +37,8 @@ Full walkthrough: `SETUP.md`
   - [x] Supabase project created, `schema.sql` run
   - [x] Repo secrets set
   - [x] **First run verified end-to-end — 216 rows in the database**
-  - [ ] Windows scheduled task registered
-  - [ ] Second day's run — proves the time series
+  - [x] Windows scheduled task registered, verified running
+  - [ ] Second day's run — proves the time series ← NEXT
   - [ ] 7 days of collection
 - [ ] 2. Spec join table + government data (JPJ, fuel, OPR)
 - [ ] 3. Entity resolution + credibility scorer
@@ -49,7 +49,7 @@ Full walkthrough: `SETUP.md`
 ## Phase 1 exit gates
 
 - [ ] Runs 7 consecutive days unattended, zero manual intervention
-- [ ] ≥2,000 unique listings captured
+- [x] ≥2,000 unique listings captured — 2,016 on day 0
 - [ ] **≥1 price change captured for the same `listing_id`** ← the real gate
 - [ ] ≥1 delisting captured
 - [ ] Dead-man's switch verified by deliberately breaking it
@@ -123,3 +123,20 @@ predicted. Worth writing up in the README as a finding rather than hiding.
 | date | rows | source | notes |
 |------|------|--------|-------|
 | 2026-07-19 | 216 | local PC | first verified end-to-end run; GitHub Actions 403 |
+| 2026-07-19 | 2,012 | scheduled task | **2,016 total.** Price range RM 4,800 – RM 6,888,000 |
+
+## Bug found and fixed 2026-07-19: re-runs were not idempotent
+
+The scheduled task collected 2,006 listings then died with `HTTP 409 Conflict`
+on write. `Prefer: resolution=ignore-duplicates` is not sufficient on its own —
+PostgREST resolves conflicts against the **primary key**, which here is the
+surrogate `id`. The constraint that matters is the composite
+`(listing_id, scraped_at)`, so it must be named explicitly:
+`?on_conflict=listing_id,scraped_at`.
+
+The earlier commit claiming re-runs were idempotent was simply wrong. Verified
+properly this time: re-inserting an existing row leaves the count unchanged and
+returns no error.
+
+Worth noting *why* this surfaced now rather than on day 30 — running the same
+day twice is exactly what `-StartWhenAvailable` will do after a missed run.
