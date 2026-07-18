@@ -45,5 +45,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -r requirements.txt
+      # Not -r requirements.txt: that pulls jupyter/sklearn/pandas for the
+      # modelling side, none of which the parser tests touch.
+      - run: pip install pytest
       - run: python -m pytest tests -q

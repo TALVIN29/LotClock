@@ -1,0 +1,183 @@
+{
+  "numeric": [
+    {
+      "name": "car_age",
+      "min": 1.0,
+      "max": 17.0,
+      "default": 5.0
+    },
+    {
+      "name": "km_driven",
+      "min": 4000.0,
+      "max": 222291.77999999982,
+      "default": 60000.0
+    },
+    {
+      "name": "mileage_kmpl",
+      "min": 11.2,
+      "max": 28.4,
+      "default": 19.3
+    },
+    {
+      "name": "engine_cc",
+      "min": 796.0,
+      "max": 2967.0,
+      "default": 1248.0
+    },
+    {
+      "name": "max_power_bhp",
+      "min": 37.0,
+      "max": 204.0,
+      "default": 82.0
+    },
+    {
+      "name": "seats",
+      "min": 4.0,
+      "max": 9.0,
+      "default": 5.0
+    },
+    {
+      "name": "owner_rank",
+      "min": 1.0,
+      "max": 4.0,
+      "default": 1.0
+    }
+  ],
+  "categorical": {
+    "brand": [
+      "Audi",
+      "Bmw",
+      "Chevrolet",
+      "Datsun",
+      "Fiat",
+      "Ford",
+      "Honda",
+      "Hyundai",
+      "Jaguar",
+      "Jeep",
+      "Lexus",
+      "Mahindra",
+      "Maruti",
+      "Mercedes-Benz",
+      "Nissan",
+      "Other",
+      "Renault",
+      "Skoda",
+      "Tata",
+      "Toyota",
+      "Volkswagen",
+      "Volvo"
+    ],
+    "fuel": [
+      "CNG",
+      "Diesel",
+      "LPG",
+      "Petrol"
+    ],
+    "seller_type": [
+      "Dealer",
+      "Individual",
+      "Trustmark Dealer"
+    ],
+    "transmission": [
+      "Automatic",
+      "Manual"
+    ]
+  },
+  "feature_names": [
+    "car_age",
+    "km_driven",
+    "mileage_kmpl",
+    "engine_cc",
+    "max_power_bhp",
+    "seats",
+    "owner_rank",
+    "brand=Audi",
+    "brand=Bmw",
+    "brand=Chevrolet",
+    "brand=Datsun",
+    "brand=Fiat",
+    "brand=Ford",
+    "brand=Honda",
+    "brand=Hyundai",
+    "brand=Jaguar",
+    "brand=Jeep",
+    "brand=Lexus",
+    "brand=Mahindra",
+    "brand=Maruti",
+    "brand=Mercedes-Benz",
+    "brand=Nissan",
+    "brand=Other",
+    "brand=Renault",
+    "brand=Skoda",
+    "brand=Tata",
+    "brand=Toyota",
+    "brand=Volkswagen",
+    "brand=Volvo",
+    "fuel=CNG",
+    "fuel=Diesel",
+    "fuel=LPG",
+    "fuel=Petrol",
+    "seller_type=Dealer",
+    "seller_type=Individual",
+    "seller_type=Trustmark Dealer",
+    "transmission=Automatic",
+    "transmission=Manual"
+  ],
+  "importance": [
+    {
+      "feature": "car_age",
+      "importance": 0.4387
+    },
+    {
+      "feature": "max_power_bhp",
+      "importance": 0.4097
+    },
+    {
+      "feature": "engine_cc",
+      "importance": 0.0727
+    },
+    {
+      "feature": "brand",
+      "importance": 0.033
+    },
+    {
+      "feature": "transmission",
+      "importance": 0.0106
+    },
+    {
+      "feature": "fuel",
+      "importance": 0.0099
+    },
+    {
+      "feature": "km_driven",
+      "importance": 0.0078
+    },
+    {
+      "feature": "mileage_kmpl",
+      "importance": 0.0069
+    },
+    {
+      "feature": "seats",
+      "importance": 0.0053
+    },
+    {
+      "feature": "owner_rank",
+      "importance": 0.0046
+    },
+    {
+      "feature": "seller_type",
+      "importance": 0.0007
+    }
+  ],
+  "target_transform": "log1p",
+  "ref_year": 2020,
+  "metrics": {
+    "n_rows": 7903,
+    "n_features": 38,
+    "mae_inr": 79789,
+    "baseline_mae_inr": 413905,
+    "improvement_pct": 80.7,
+    "r2": 0.974
+  }
+}

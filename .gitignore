@@ -3,11 +3,21 @@
 *.key
 
 # python
-__pycache__/
-*.py[cod]
 .venv/
+__pycache__/
+*.pyc
 .pytest_cache/
 
-# scraped data stays in Supabase, not the repo
+# scratch verification artifacts
+_verify_*.py
+_verify_*.mjs
+_default_vec.json
+
+# node / next
+web/node_modules/
+web/.next/
+web/out/
+
+# scraped data lives in Supabase, not the repo
 data/
 *.db

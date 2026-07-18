@@ -1,3 +1,11 @@
-# The scraper itself has NO runtime dependencies — stdlib urllib only.
-# This file exists for the test runner.
-pytest>=8.0
+# The scraper (scraper/) has NO runtime dependencies — stdlib urllib only.
+# Everything below is for the model/notebook work (train.py, analysis.ipynb)
+# and for running the test suite.
+jupyter==1.1.1
+matplotlib==3.11.0
+nbformat==5.10.4
+numpy==2.5.1
+pandas==3.0.3
+pytest==9.1.1
+scikit-learn==1.9.0
+seaborn==0.13.2
