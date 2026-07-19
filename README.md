@@ -58,11 +58,26 @@ here exists to make that one number visible.
 ## How it works
 
 ```
-GitHub Actions (daily cron)  →  scraper  →  Supabase Postgres (append-only)
-healthchecks.io              →  dead-man's switch
+Windows Task Scheduler (daily 10:00)  →  scraper  →  Supabase Postgres (append-only)
+healthchecks.io                       →  dead-man's switch
 ```
 
-No server. No machine left running. Every layer is a free tier.
+No server, every layer a free tier — but note the scheduler, because the
+intended design was different and it's worth saying why.
+
+The collector was built to run on **GitHub Actions**, and that workflow is in
+this repo. It doesn't run. Motortrader's edge returns `403` to Azure IP ranges,
+so identical code that returns `200` from a home connection is refused from a
+runner. This isn't a policy against this project — their robots.txt still
+permits crawling at `Crawl-delay: 5` — it's a WAF blocking datacenter ranges
+generically.
+
+The available fixes were proxy rotation or IP spoofing. Both were rejected:
+honouring robots.txt while evading the infrastructure that enforces it defeats
+the point. So collection runs on a scheduled task on my own machine, which is
+honest but has a real cost — **gaps when the machine is off**, in a dataset
+whose whole value is daily continuity. The dead-man's switch exists to make
+those gaps visible instead of silent.
 
 **Append-only is the whole design.** A price change is never an `UPDATE`; it's a
 new dated row. That is the only reason anything can be measured over time.
@@ -105,7 +120,9 @@ Full setup (Supabase + Actions) is in [`SETUP.md`](SETUP.md).
       confused with the monthly loan installment
 - [x] Polite fetcher — 5s delay, honest UA, backoff on 429/5xx
 - [x] Append-only Supabase writer, idempotent on re-runs
-- [x] Daily GitHub Action + dead-man's switch
+- [x] Dead-man's switch (healthchecks.io)
+- [x] Daily GitHub Action — **written, but blocked by a WAF on cloud IPs**;
+      collection currently runs from a scheduled task instead
 - [ ] 7 consecutive unattended days ← current gate
 - [ ] Spec join + JPJ / fuel-price / OPR government data
 - [ ] Entity resolution + listing credibility scoring
@@ -123,6 +140,9 @@ reasoning.
 - **Listing price ≠ transaction price.** Hence measuring negotiation room rather
   than claiming to predict sale price.
 - Single source today. Multi-source resilience is designed, not implemented.
+- **Collection depends on one machine being awake.** Running from a scheduled
+  task rather than a cloud cron means a day missed is a day gone — daily
+  history cannot be backfilled.
 - The liquidity model needs ~90 days of collection to be meaningful. At day 30
   most cars are still unsold, so estimates will be heavily right-censored — and
   will be published saying so.
