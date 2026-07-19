@@ -3,26 +3,44 @@
 **Status:** phase 1 — **collecting.** 2,016 rows in Supabase, task scheduled daily.
 **Repo:** https://github.com/TALVIN29/LotClock (public, `main` is default)
 **Data collection started: 2026-07-19** ← day 0 of the only asset that compounds
-**Hours spent:** ~5 / 18
-**Last session:** 2026-07-19 — Supabase live, 2,016 rows collected and verified,
-scheduled task registered and test-fired, idempotency bug found and fixed.
-GitHub Actions remains blocked by Cloudflare (see blocker below).
+**Hours spent:** ~6 / 18
+**Last session:** 2026-07-19 (evening) — scheduled task was silently broken by
+the `price-story` → `LotClock` folder rename and re-registered; dead-man's
+switch armed; email sent to motortrader; README corrected where it claimed a
+GitHub Actions pipeline that doesn't run and cited market figures with no
+source. GitHub Actions remains blocked by Cloudflare (see blocker below).
 
 **Next action (start here):**
-1. **Tomorrow after 10am, run the gate query.** A price that moved is the entire
-   thesis — nothing downstream exists without it:
-   ```sql
-   select listing_id, min(price_myr) lo, max(price_myr) hi, count(*) snaps
-   from listing_snapshot group by 1 having min(price_myr) <> max(price_myr);
-   ```
-   Also confirm two distinct dates exist:
-   ```sql
-   select scraped_at, count(*) from listing_snapshot group by 1 order by 1;
-   ```
-   Then check healthchecks.io went green off the 10:00 run — that is the
-   dead-man's switch doing its actual job for the first time.
-2. Email motortrader.com.my requesting Cloudflare allowlisting (draft in chat
-   2026-07-19) — best 10 minutes available; unblocks genuinely unattended runs
+1. **2026-07-20 after 10:00 — the day-1 checks. This is the whole session.**
+   Three things, in this order, because each one is worthless if the previous
+   failed:
+
+   a. **Did the run happen at all?** `logs/scrape.log` should have a new
+      `RUN STARTED`/`RUN FINISHED ... exit=0` pair, and healthchecks.io should
+      be green. A *missing* log entry means the task didn't fire — that is the
+      exact failure that hid on day 0, so check it first and don't infer it
+      from row counts.
+
+   b. **Are there two distinct dates?** No second date, no time series:
+      ```sql
+      select scraped_at, count(*) from listing_snapshot group by 1 order by 1;
+      ```
+
+   c. **Did any price move?** The real gate. A price that moved is the entire
+      thesis; nothing downstream exists without it:
+      ```sql
+      select listing_id, min(price_myr) lo, max(price_myr) hi, count(*) snaps
+      from listing_snapshot group by 1 having min(price_myr) <> max(price_myr);
+      ```
+      **Expect zero or close to it on day 1, and don't panic** — cars don't get
+      repriced overnight. This query becoming non-empty is a day-7-to-14 event.
+      Day 1 only has to prove two dates exist and rows repeat by `listing_id`.
+
+2. **Await motortrader reply** (sent 2026-07-19 to lai@motortrader.com.my,
+   MT Digital Sdn Bhd). If they allowlist, the GitHub Actions workflow already
+   in the repo starts working and collection stops depending on this PC being
+   awake. If they decline, honour it — that ends motortrader as a source and
+   carsome becomes the plan, not a redundancy.
 3. Optional: Oracle always-free VM. **Test with one curl before configuring
    anything** — Oracle is also a datacenter ASN and may get the same 403:
    ```
