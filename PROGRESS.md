@@ -180,3 +180,30 @@ returns no error.
 
 Worth noting *why* this surfaced now rather than on day 30 — running the same
 day twice is exactly what `-StartWhenAvailable` will do after a missed run.
+
+## Bug found and fixed 2026-07-19: scheduled task pointed at the old folder path
+
+Renaming `E:\Portfolio\price-story` to `E:\Portfolio\LotClock` broke the task.
+Its registered action still read `E:\Portfolio\price-story\run_daily.cmd`, a
+path that no longer exists. The 12:51 run returned `LastTaskResult = 1` and the
+next run was scheduled to fail the same way.
+
+Fixed by re-running `install_task.ps1` from the new folder — it builds the
+action from `$PSScriptRoot`, so it re-registers with the correct path by
+construction. Verified: the task's `Execute` now reads
+`E:\Portfolio\LotClock\run_daily.cmd`.
+
+**The failure mode matters more than the bug.** `run_daily.cmd` is what writes
+`logs/scrape.log`, so a task that never starts it produces *no* log line at all
+— not an error, just nothing. A missing day looks identical to a day the
+scraper was never scheduled for. The only signal is the gap itself, and gaps
+are exactly what a days-to-sell model has to reason about. Two guards worth
+having before day 30:
+
+- an external dead-man's switch (the already-planned `HEALTHCHECK_URL` — it
+  fires on *absence* of a ping, which is precisely this case)
+- a `collection_days` table, or a query over `distinct scraped_at`, so an
+  observed day is a recorded fact rather than an inference from listing rows
+
+Neither is built yet. Until one is, verify the task after any folder move:
+`(Get-ScheduledTask -TaskName "LotClock daily scrape").Actions.Execute`
