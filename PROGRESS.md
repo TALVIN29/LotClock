@@ -19,6 +19,8 @@ GitHub Actions remains blocked by Cloudflare (see blocker below).
    ```sql
    select scraped_at, count(*) from listing_snapshot group by 1 order by 1;
    ```
+   Then check healthchecks.io went green off the 10:00 run — that is the
+   dead-man's switch doing its actual job for the first time.
 2. Email motortrader.com.my requesting Cloudflare allowlisting (draft in chat
    2026-07-19) — best 10 minutes available; unblocks genuinely unattended runs
 3. Optional: Oracle always-free VM. **Test with one curl before configuring
@@ -62,7 +64,10 @@ Full walkthrough: `SETUP.md`
 - [x] ≥2,000 unique listings captured — 2,016 on day 0
 - [ ] **≥1 price change captured for the same `listing_id`** ← the real gate
 - [ ] ≥1 delisting captured
-- [ ] Dead-man's switch verified by deliberately breaking it
+- [ ] Dead-man's switch verified by deliberately breaking it — **armed**
+      2026-07-19 (healthchecks.io, `HEALTHCHECK_URL` set, ping test-fired
+      through `ping_healthcheck()` and returned 200). Still unverified: proving
+      it goes *red* requires letting one period + grace lapse with no ping.
 
 ## Decisions made (and why)
 
@@ -153,8 +158,8 @@ two half-built ones.
 
 ## Blocked / open questions
 
-- Does `HEALTHCHECK_URL` need a paid healthchecks.io tier for daily? (free tier
-  should cover one check — verify)
+- ~~Does `HEALTHCHECK_URL` need a paid healthchecks.io tier for daily?~~
+  Answered 2026-07-19: free tier covers it. One check, configured and pinging.
 - Full pass is ~563 pages ≈ 47 min. Start capped at 2,000 listings; decide later
   whether the full 12,954 daily is worth the load on their server.
 
