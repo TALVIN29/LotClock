@@ -48,9 +48,15 @@ held 90 days, the costs that don't appear on the invoice:
 | Opportunity cost — that capital couldn't buy another car | RM 3,000 |
 | **Total** | **RM 6,236** |
 
+*Worked illustration, not a measurement — the rates are assumptions (8%/yr
+financing, ~1.5%/month depreciation, capital recycled once per holding period).
+The point is the shape: holding cost scales with days held, which is exactly the
+quantity nobody publishes. Measuring the real distribution is what this project
+is for.*
+
 Visible profit RM 3,000. Actual result: a **RM 3,236 loss**, booked as a win and
-repeated. Around 5,000 independent dealers — **62.5% of a USD 18.7B market** —
-operate this way, because the data to do otherwise has never existed.
+repeated. Independent dealers operate this way because the data to do otherwise
+has never existed.
 
 The metric that matters is **capital velocity, not per-unit margin.** Everything
 here exists to make that one number visible.
