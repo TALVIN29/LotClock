@@ -10,7 +10,14 @@ switch armed; email sent to motortrader; README corrected where it claimed a
 GitHub Actions pipeline that doesn't run and cited market figures with no
 source. GitHub Actions remains blocked by Cloudflare (see blocker below).
 
-**Next action (start here):**
+**Next action (start here): install the backup collector on the laptop.**
+Clone the repo there, copy `.env` across by hand (it is gitignored), then run
+`install_task.ps1 -Backup` as admin. Verified on the desktop 2026-08-05:
+`--skip-if-collected` exits 0 without scraping when the day is already covered,
+and the 5 existing tests still pass. See the 2026-08-05 decision below for why
+gaps are now modelled rather than engineered away.
+
+**Earlier next-action list (day-1 checks, kept for reference):**
 1. **2026-07-20 after 10:00 — the day-1 checks. This is the whole session.**
    Three things, in this order, because each one is worthless if the previous
    failed:
@@ -107,6 +114,33 @@ Full walkthrough: `SETUP.md`
 - 2026-07-19: **Price and monthly installment parsed by separate patterns.**
   Every card shows both (`RM 170,888` and `RM 2,304 / month`); confusing them is
   the classic bait-price bug. A test asserts they never cross.
+
+- 2026-08-05: **Stop chasing an always-on host. Tolerate gaps and model them
+  as interval censoring instead.** Aug 1–3 were missed because the desktop was
+  powered off — not a config fault (`WakeToRun` and `StartWhenAvailable` were
+  both already set; a wake timer cannot boot a machine that is shut down).
+  Every hosting fix was closed off: Oracle's free-tier signup rejects the
+  account, no credit card for a VPS, the motortrader allowlist email is still
+  unanswered, and BIOS RTC wake fails the moment the PC is unplugged for a trip.
+
+  The requirement was the expensive part, not the infrastructure. Daily
+  observation is not what survival analysis needs — knowing *when we looked* is.
+  A listing last seen Aug 5 and gone by Aug 9 is interval-censored, which is
+  standard and honest, not a workaround. `scrape_run` already records every
+  observation day, so the gaps are known rather than silent — that is the line
+  between messy data and unusable data. Days-on-market at ±3-day resolution is
+  still a number that does not exist for this market.
+
+  Mitigation, zero cost: **the laptop collects too** (`install_task.ps1 -Backup`,
+  20:00, `--skip-if-collected`). Two machines with different power schedules
+  means either one being off no longer creates a gap. `store.already_collected()`
+  makes the second host exit early on a day the first covered, so redundancy
+  never doubles the request load on a source that granted access on the strength
+  of good behaviour.
+
+  **Phase 1 must use an interval-censored fit, not a daily-exact one**, and the
+  Kaggle data card must state the observation gaps. Being explicit about them is
+  a credibility gain, not a weakness.
 
 ## ⚠️ Blocker found 2026-07-18: motortrader 403s GitHub Actions IPs
 

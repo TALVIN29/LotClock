@@ -75,7 +75,16 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true", help="parse only, no writes")
     ap.add_argument("--max", type=int, default=MAX_LISTINGS)
+    ap.add_argument("--skip-if-collected", action="store_true",
+                    help="exit early when another host already took today's snapshot")
     args = ap.parse_args()
+
+    if args.skip_if_collected and not args.dry_run and store.already_collected():
+        # Second collector on a day the first one already covered. Exit 0 and
+        # ping, because "nothing to do" is a healthy outcome, not a miss.
+        print("today already collected by another host, skipping")
+        ping_healthcheck()
+        return 0
 
     seen, failed = collect(args.max)
     records = list(seen.values())

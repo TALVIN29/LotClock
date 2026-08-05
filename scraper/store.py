@@ -53,6 +53,25 @@ def _post(table: str, rows: list[dict], *, on_conflict: str | None = None) -> No
             raise RuntimeError(f"supabase {table} returned {r.status}")
 
 
+def already_collected(scraped_at: date | None = None) -> bool:
+    """Has any host already written today's snapshot?
+
+    Two machines collect so that neither one being off creates a gap. Without
+    this check both would walk the whole index every day, doubling the request
+    load on a source that grants access on the strength of behaving well. The
+    writes are idempotent; the politeness is not.
+    """
+    url, key = _cfg()
+    day = (scraped_at or date.today()).isoformat()
+    req = urllib.request.Request(
+        f"{url}/rest/v1/listing_snapshot"
+        f"?scraped_at=eq.{day}&select=listing_id&limit=1",
+        headers={"apikey": key, "Authorization": f"Bearer {key}"},
+    )
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return bool(json.loads(r.read()))
+
+
 def save_snapshots(records: list[dict], scraped_at: date | None = None) -> int:
     """Insert one row per listing per day. Re-runs on the same day are no-ops.
 
