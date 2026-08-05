@@ -139,6 +139,70 @@ compounds.
 
 ---
 
+## 7. Second collector on another machine (do this next)
+
+**Checkpoint as of 2026-08-05:** the desktop collects daily at 10:00 and is
+working. Aug 1–3 were missed because the machine was powered off. Rather than
+chase an always-on host — Oracle's free tier rejected the signup, there is no
+card for a VPS, and the motortrader allowlist email is unanswered — a second
+machine on a different power schedule covers the gaps, and Phase 1 models the
+remainder as interval censoring. See the 2026-08-05 decision in `PROGRESS.md`.
+
+Run these **on the laptop**, in order.
+
+Clone the repo:
+
+```powershell
+git clone https://github.com/TALVIN29/LotClock.git C:\LotClock
+```
+
+Copy `.env` across **by hand** — it is gitignored and will not come with the
+clone. Use a USB stick or retype it; do not email it to yourself. Or start from
+`.env.example` and paste the Supabase values out of the dashboard again.
+
+Create the venv (the scraper is stdlib-only, but the tests and notebook need it):
+
+```powershell
+python -m venv C:\LotClock\.venv
+```
+
+Confirm parsing works from this machine before scheduling anything:
+
+```powershell
+C:\LotClock\.venv\Scripts\python.exe -m scraper.run --dry-run --max 80
+```
+
+Register the backup task, in an **Administrator** PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File C:\LotClock\install_task.ps1 -Backup
+```
+
+`-Backup` runs at 20:00 instead of 10:00 and passes `--skip-if-collected`, so if
+the desktop already took today's snapshot this host exits in about two seconds
+without touching motortrader. Redundancy must not double the request load on a
+source that grants access on the strength of good behaviour.
+
+Verify the next day:
+
+```powershell
+Get-Content C:\LotClock\logs\scrape.log -Tail 5
+```
+
+Expect either `exit=0` after a real collection, or the line
+`today already collected by another host, skipping`. Both are healthy.
+
+### What "done" looks like now
+
+The old target was seven consecutive days with no gap. That is no longer the
+goal — with no always-on host it is not achievable, and it is not what the model
+needs. The target is **every gap being a known interval rather than a silent
+hole**: `scrape_run` has a row for every observation day, and both machines are
+scheduled. Check the run log after a week and confirm the missing days are
+visible, not that there are none.
+
+---
+
 ## Troubleshooting
 
 | symptom | cause |
