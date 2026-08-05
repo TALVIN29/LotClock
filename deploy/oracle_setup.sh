@@ -49,20 +49,10 @@ chmod +x "$DIR/deploy/run_daily.sh"
 # --- secrets -------------------------------------------------------------------
 # Never fetched from the repo - .env is gitignored and must be placed by hand.
 if [ ! -f "$DIR/.env" ]; then
-  cat > "$DIR/.env.template" <<'EOF'
-SUPABASE_URL=
-SUPABASE_SERVICE_KEY=
-HEALTHCHECK_URL=
-SCRAPER_USER_AGENT=LotClock/0.1 (+https://github.com/TALVIN29/LotClock)
-SCRAPE_DELAY_SECONDS=5
-SCRAPE_MAX_LISTINGS=2000
-SCRAPE_MIN_EXPECTED=200
-EOF
-  chmod 600 "$DIR/.env.template"
   echo
-  echo "NEXT: copy your values into $DIR/.env then re-run this script."
-  echo "  cp $DIR/.env.template $DIR/.env && nano $DIR/.env && chmod 600 $DIR/.env"
-  echo "Template written. Nothing scheduled yet."
+  echo "NEXT: fill in your values, then re-run this script."
+  echo "  cp $DIR/.env.example $DIR/.env && nano $DIR/.env && chmod 600 $DIR/.env"
+  echo "Nothing scheduled yet."
   exit 0
 fi
 chmod 600 "$DIR/.env"
