@@ -32,8 +32,9 @@ def collect(max_listings: int = MAX_LISTINGS) -> tuple[dict[str, dict], int]:
     barren = 0
 
     for page in range(1, MAX_PAGES + 1):
+        url = fetch.index_url(page)
         try:
-            html = fetch.get(fetch.index_url(page))
+            html = fetch.get(url)
         except Exception as e:  # one bad page must not end the run
             print(f"page {page}: FAILED {type(e).__name__}: {e}", file=sys.stderr)
             failed += 1
@@ -42,7 +43,7 @@ def collect(max_listings: int = MAX_LISTINGS) -> tuple[dict[str, dict], int]:
                 break
             continue
 
-        records = parse_index(html)
+        records = parse_index(html, url=url)
         fresh = [r for r in records if r["listing_id"] not in seen]
         for r in fresh:
             seen[r["listing_id"]] = r

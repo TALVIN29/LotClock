@@ -1,4 +1,9 @@
-# The scraper (scraper/) has NO runtime dependencies — stdlib urllib only.
+# Scraper runtime dependency. Fetching is still stdlib urllib (see fetch.py) —
+# Scrapling is used only as a parser, for CSS selectors and adaptive element
+# relocation. Its browser/stealth fetchers are deliberately NOT installed: TLS
+# impersonation and proxy rotation are against this project's scraping stance.
+scrapling==0.4.12
+
 # Everything below is for the model/notebook work (train.py, analysis.ipynb)
 # and for running the test suite.
 jupyter==1.1.1

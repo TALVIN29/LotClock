@@ -12,6 +12,7 @@ from scraper.parse import parse_index
 
 FIXTURE = Path(__file__).parent / "fixtures" / "car_index.html"
 HTML = FIXTURE.read_text(encoding="utf-8", errors="replace")
+URL = "https://www.motortrader.com.my/car/index?page=1"
 
 
 def test_finds_listings():
@@ -45,6 +46,20 @@ def test_missing_fields_degrade_not_raise():
     recs = parse_index(broken)
     assert len(recs) >= 30, "listings must still be found"
     assert all(r["price_myr"] is None for r in recs)
+
+
+def test_renamed_container_still_yields_a_sample():
+    # a site redesign that renames the card container defeats the CSS selector;
+    # adaptive relocation should still hand back *some* cards to re-derive the
+    # new markup from. Partial by design -- see _cards() -- so this asserts a
+    # floor, not full recovery.
+    parse_index(HTML, url=URL)  # save the selector first
+    renamed = HTML.replace(
+        "superdeals-featured-cnabadv__featured-ads-section-listing", "listing-card-v2"
+    )
+    recs = parse_index(renamed, url=URL)
+    assert 0 < len(recs) < 34, f"expected a partial harvest, got {len(recs)}"
+    assert any(r["price_myr"] for r in recs), "recovered cards must still parse fields"
 
 
 def test_empty_html_returns_nothing():
