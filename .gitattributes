@@ -1,0 +1,8 @@
+# Shell scripts must keep LF endings. Checked out with CRLF on Windows they
+# fail on a Linux host with "bad interpreter: /usr/bin/env bash^M" - which
+# would only surface on the collector host, at 10:00, silently.
+*.sh text eol=lf
+
+# Windows-only launchers stay CRLF.
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
