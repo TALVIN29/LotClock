@@ -14,6 +14,74 @@ the collection log below. Found that 07-24 started, was killed with `^C`, and wr
 **zero** rows — the log's `RUN STARTED` line had been hiding a lost day. Single-host
 collection is the root cause of every gap; the laptop is the fix.
 
+## 2026-08-08 (same session) — the exit rule, fitted not guessed
+
+`exit_rule.py` (new, self-checking: `python exit_rule.py --test`) measures how long
+absences actually last, in OBSERVED days, and picks the smallest N where "absent N days
+running" stops reversing. Closed gaps only count as returns; a run of absence that
+reaches the end of the data is censored, so it sits in the denominator and never in the
+numerator.
+
+| N days absent | reached | came back | return rate |
+|---|---|---|---|
+| 1 | 2,376 | 2,081 | 87.6% |
+| 2 | 565 | 433 | 76.6% |
+| 3 | 189 | 96 | 50.8% |
+| 4 | 108 | 26 | 24.1% |
+| 5 | 77 | 9 | 11.7% |
+| **6** | 64 | 0 | **0.0%** |
+
+Geometric decay, no ambiguity about the shape. **N = 6** is the smallest threshold under
+5%. Under it **64 listings count as exited**, against 295 by naive last-seen — so the
+naive count was ~4.6x inflated.
+
+**Caveat to carry into any writeup:** with 16 observed days, a 6-day gap has little room
+left to close, so the 0% at N>=6 is partly window-limited. N = 5 (11.7%) is the estimate
+standing on firmer ground. More observed days will settle it; re-run `exit_rule.py` as
+the series grows and watch whether N drifts.
+
+Note the noise is dominated by 1-day flicker (1,648 of 2,081 closed gaps), which is what
+a pagination-instability explanation predicts.
+
+## 2026-08-08 — coverage audit: the sold-event does not survive contact with the data
+
+Measured, not guessed. Three findings, in order of how much they hurt:
+
+1. **The crawl cap binds every single run — 16 of 16.** `grep "reached max_listings"
+   logs/scrape.log` returns 16; `"no new listings for 3 pages"` returns 0. The run has
+   never once reached the end of results, so every day is a partial harvest of ~2,010.
+
+2. **The site holds 13,029 listings. We collect 15% of them.** Page 1 markup states the
+   count; probing confirms real results end at page ~543 (24 real listings per page,
+   plus a 12-card featured block that repeats on *every* page — which is why a naive
+   "last non-empty page" probe reports 6,399 and is wrong).
+
+3. **87.6% of disappearances reappear later — 2,081 of 2,376.** Dropping the final
+   transition, where reappearance is impossible by construction, it is **94%**. Daily
+   "gone" runs 150–180 listings; only **295** listings vanished permanently across the
+   whole 21 days. The noise is roughly 10x the signal. **A survival model fitted on
+   absence-as-sold today would mostly be modelling crawl noise.**
+
+Supporting detail: only **2,314 distinct listing_ids** appeared across 21 days while
+collecting ~2,010/day. The same cars are seen every day and only ~15 genuinely new IDs
+arrive daily, so the index is not recency-sorted at the top and the cap is not pushing
+old cars off the end. The flicker has another cause — most likely pagination
+instability: the run walks 92 pages over ~8 minutes at the 5s crawl-delay, and any
+reordering between page requests drops listings across page boundaries.
+
+Also confirmed, and good news: **155 of 2,314 listings changed price** at least once
+(schema.sql verification query 3, run for the first time). Price movement is real and
+observable. That half of the thesis stands.
+
+Consequence: **coverage and event-definition come before any modelling.** Two separate
+fixes, independent of each other —
+- *coverage*: 543 pages at 5s is ~45 min/day for a full census, versus 8 min for 15%;
+- *event definition*: require absence on N consecutive observed days before calling a
+  listing sold, instead of trusting a single day's absence. Costs nothing to compute
+  and is the direct answer to the 94% reappearance rate.
+
+Audit scripts were throwaway (scratchpad, read-only, no writes to Supabase).
+
 **Next action (start here): install the backup collector on the laptop (model 83JN).**
 One step at a time:
 
