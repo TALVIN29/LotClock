@@ -14,6 +14,10 @@ import urllib.request
 from datetime import date
 
 BATCH = 500
+# A day is only "collected" above this many rows. Same env var the run uses for its
+# thin-day threshold, deliberately: one knob, and the two must never disagree about
+# what a complete day is.
+MIN_COMPLETE = int(os.getenv("SCRAPE_MIN_EXPECTED", "8000"))
 
 
 def _cfg() -> tuple[str, str]:
@@ -53,23 +57,47 @@ def _post(table: str, rows: list[dict], *, on_conflict: str | None = None) -> No
             raise RuntimeError(f"supabase {table} returned {r.status}")
 
 
-def already_collected(scraped_at: date | None = None) -> bool:
-    """Has any host already written today's snapshot?
+def day_row_count(scraped_at: date | None = None) -> int:
+    """How many snapshot rows exist for a given day.
 
-    Two machines collect so that neither one being off creates a gap. Without
-    this check both would walk the whole index every day, doubling the request
-    load on a source that grants access on the strength of behaving well. The
-    writes are idempotent; the politeness is not.
+    Asks PostgREST for an exact count rather than fetching rows: `Prefer:
+    count=exact` puts `start-end/total` in the Content-Range response header. This
+    is the same technique the 2026-08-08 continuity audit used, and for the same
+    reason -- the database is the only record of what was collected, the log is not.
     """
     url, key = _cfg()
     day = (scraped_at or date.today()).isoformat()
     req = urllib.request.Request(
         f"{url}/rest/v1/listing_snapshot"
-        f"?scraped_at=eq.{day}&select=listing_id&limit=1",
-        headers={"apikey": key, "Authorization": f"Bearer {key}"},
+        f"?scraped_at=eq.{day}&select=listing_id",
+        headers={
+            "apikey": key,
+            "Authorization": f"Bearer {key}",
+            "Prefer": "count=exact",
+            "Range-Unit": "items",
+            "Range": "0-0",
+        },
     )
     with urllib.request.urlopen(req, timeout=30) as r:
-        return bool(json.loads(r.read()))
+        total = r.headers.get("Content-Range", "").split("/")[-1]
+    return int(total) if total.isdigit() else 0
+
+
+def already_collected(scraped_at: date | None = None) -> bool:
+    """Has today been collected *completely*?
+
+    Two machines collect so that neither one being off creates a gap. This is what
+    makes the second host exit early instead of walking the whole index again,
+    doubling the request load on a source that grants access on the strength of
+    behaving well. The writes are idempotent; the politeness is not.
+
+    Testing that *any* row exists was correct only while a run wrote once, at the
+    end -- all or nothing. Now that a run flushes per batch, a run killed halfway
+    leaves thousands of rows behind, and an existence test would read that as done
+    and skip the host that could have finished the day. So the test is a count
+    against the same threshold the run itself uses to call a day thin.
+    """
+    return day_row_count(scraped_at) >= MIN_COMPLETE
 
 
 def save_snapshots(records: list[dict], scraped_at: date | None = None) -> int:

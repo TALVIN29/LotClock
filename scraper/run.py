@@ -18,18 +18,43 @@ import urllib.request
 from scraper import fetch, store
 from scraper.parse import parse_index
 
-MAX_LISTINGS = int(os.getenv("SCRAPE_MAX_LISTINGS", "2000"))
-MIN_EXPECTED = int(os.getenv("SCRAPE_MIN_EXPECTED", "200"))
-MAX_PAGES = 400
+# Full census. The 2026-08-08 audit found the old 2,000 cap bound on every single
+# run -- 16 of 16 -- so we were sampling 15% of a 13,029-listing site and calling
+# the missing 85% "sold". These are set clear of the real end of results (~page
+# 543 at 24 listings a page) so that the crawl stops because it ran out of cars,
+# not because it ran out of budget. If a log line ever says "reached
+# max_listings" again, the site grew and these need raising.
+MAX_LISTINGS = int(os.getenv("SCRAPE_MAX_LISTINGS", "20000"))
+# A run that harvests a fraction of the site is worse than no run: it manufactures
+# absences that look like sales. Fail loudly below ~60% of known inventory.
+MIN_EXPECTED = int(os.getenv("SCRAPE_MIN_EXPECTED", "8000"))
+MAX_PAGES = 700
 # Featured cards repeat on every page, so a page of pure repeats means we have
 # walked off the end of the real results.
 EMPTY_PAGE_LIMIT = 3
 
 
-def collect(max_listings: int = MAX_LISTINGS) -> tuple[dict[str, dict], int]:
+def collect(max_listings: int = MAX_LISTINGS, *, write: bool = True) -> tuple[dict[str, dict], int, int]:
+    """Walk the index, flushing snapshots to Supabase as we go.
+
+    Writes happen per batch inside the loop, not once at the end. A full census is
+    ~45 minutes (543 pages x the 5s crawl-delay) and a killed run used to lose the
+    whole day -- which already happened once (07-24, ^C, zero rows). Because
+    `save_snapshots` is idempotent on (listing_id, scraped_at), a partial write plus
+    a later re-run compose into a complete day with no reconciliation needed.
+    """
     seen: dict[str, dict] = {}
+    buffer: list[dict] = []
     failed = 0
     barren = 0
+    written = 0
+
+    def flush() -> None:
+        nonlocal written, buffer
+        if write and buffer:
+            written += store.save_snapshots(buffer)
+            print(f"  flushed {len(buffer)} rows, {written} written so far")
+        buffer = []
 
     for page in range(1, MAX_PAGES + 1):
         url = fetch.index_url(page)
@@ -47,8 +72,12 @@ def collect(max_listings: int = MAX_LISTINGS) -> tuple[dict[str, dict], int]:
         fresh = [r for r in records if r["listing_id"] not in seen]
         for r in fresh:
             seen[r["listing_id"]] = r
+        buffer.extend(fresh)
 
         print(f"page {page}: {len(records)} parsed, {len(fresh)} new, {len(seen)} total")
+
+        if len(buffer) >= store.BATCH:
+            flush()
 
         barren = barren + 1 if not fresh else 0
         if barren >= EMPTY_PAGE_LIMIT:
@@ -58,7 +87,8 @@ def collect(max_listings: int = MAX_LISTINGS) -> tuple[dict[str, dict], int]:
             print(f"reached max_listings={max_listings}")
             break
 
-    return seen, failed
+    flush()
+    return seen, failed, written
 
 
 def ping_healthcheck() -> None:
@@ -87,7 +117,7 @@ def main() -> int:
         ping_healthcheck()
         return 0
 
-    seen, failed = collect(args.max)
+    seen, failed, written = collect(args.max, write=not args.dry_run)
     records = list(seen.values())
     priced = [r for r in records if r.get("price_myr")]
     print(f"\ncollected {len(records)} listings, {len(priced)} with a price, {failed} page failures")
@@ -97,16 +127,20 @@ def main() -> int:
             print(" ", r)
         return 0
 
-    if len(records) < MIN_EXPECTED:
-        # Loud failure: GitHub emails on a non-zero exit. A quiet run that
-        # collected nothing is worse than a crash, because nobody notices.
-        store.log_run("motortrader", len(records), failed, "under_threshold")
+    # The rows are already in the database -- the walk wrote them as it went -- so
+    # this can no longer gate the write. It labels the day instead. A thin day
+    # recorded as thin is usable; a thin day thrown away leaves a hole that is
+    # indistinguishable from a day nobody looked.
+    thin = len(records) < MIN_EXPECTED
+    store.log_run("motortrader", written, failed,
+                  "under_threshold" if thin else "ok")
+    print(f"wrote {written} snapshot rows")
+
+    if thin:
+        # Loud failure: a non-zero exit emails, and withholding the ping lets the
+        # dead-man's switch go red. Silence is the alert.
         print(f"FAIL: only {len(records)} listings, expected >= {MIN_EXPECTED}", file=sys.stderr)
         return 1
-
-    written = store.save_snapshots(records)
-    store.log_run("motortrader", written, failed, "ok")
-    print(f"wrote {written} snapshot rows")
 
     ping_healthcheck()
     return 0

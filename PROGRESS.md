@@ -7,12 +7,92 @@ days** of 21 calendar days since day 0. Desktop scheduled task `Ready`, next run
 **Data collection started: 2026-07-19** ← day 0 of the only asset that compounds
 **Continuity:** longest clean streak **7 days (07-25 → 07-31)**. Current streak **2
 days (08-07, 08-08)**. Gaps: 07-24, 08-01, 08-02, 08-03, 08-06 — see the log below.
-**Hours spent:** ~7 / 18
-**Last session:** 2026-08-08 — continuity audit. Counted rows per day straight out of
+**Hours spent:** ~8 / 18
+**Previous session:** 2026-08-08 — continuity audit. Counted rows per day straight out of
 Supabase instead of trusting `logs/scrape.log`, and back-filled 20 unrecorded runs into
 the collection log below. Found that 07-24 started, was killed with `^C`, and wrote
 **zero** rows — the log's `RUN STARTED` line had been hiding a lost day. Single-host
 collection is the root cause of every gap; the laptop is the fix.
+
+**Last session:** 2026-08-08 (later) — armed the full census and made it survivable.
+See the section directly below; that is where to start reading.
+
+## 2026-08-08 (later) — full census armed, and a 45-minute run made interruptible
+
+The 15% coverage problem is fixed at the source: the crawl now stops when it runs out
+of cars, not out of budget. `MAX_LISTINGS` 2,000 -> 20,000, `MAX_PAGES` -> 700,
+`MIN_EXPECTED` 200 -> 8,000 (~60% of the known 13,029 inventory).
+
+**The cap lived in `.env`, not only in the code.** `SCRAPE_MAX_LISTINGS=2000` and
+`SCRAPE_MIN_EXPECTED=200` were set there, and `os.getenv` means the environment wins.
+Raising the constants in `run.py` alone would have changed nothing — the next run would
+have capped at 2,000 exactly as before, and the census would have looked broken for a
+reason nothing in the code showed. Both `.env` and `.env.example` now carry the new
+values. **Check `.env` first whenever a constant appears not to take effect.**
+
+### Writes now flush per batch, mid-walk
+
+A census is ~45 minutes (543 pages x the 5s crawl-delay) where the old run was ~8, and
+`save_snapshots` used to be called once, after the walk. A run killed at minute 40 wrote
+**zero** rows — which is exactly how 07-24 was lost, with a 6x wider window.
+
+`collect()` now buffers and writes whenever the buffer passes `store.BATCH` (500).
+Because the write is idempotent on `(listing_id, scraped_at)`, a partial write plus a
+later re-run compose into a complete day with no reconciliation code. A killed run now
+loses at most the current buffer instead of the day.
+
+Consequence, accepted deliberately: **`MIN_EXPECTED` can no longer gate the write** —
+rows are already in the database by the time the total is known. It labels the day
+instead, via the `under_threshold` status that `scrape_run` already had. The run still
+exits 1 and still withholds the healthcheck ping, so a thin day is loud. A thin day
+recorded as thin is usable; a thin day thrown away leaves a hole indistinguishable from
+a day nobody looked. Same principle as the 08-05 gap decision.
+
+### `already_collected()` had to change with it
+
+It tested whether *any* row existed for today. That was correct only while a run wrote
+all-or-nothing. Under per-batch writes, a run killed halfway leaves thousands of rows,
+an existence test reads that as "done", and the laptop's 8pm `--skip-if-collected`
+**skips the host that could have finished the day.** It now counts rows (PostgREST
+`Prefer: count=exact`, new `store.day_row_count()`) and compares against the same
+threshold, read from the same env var so the two can never disagree.
+
+### ⚠️ Coverage is now a regime change — do not model across it
+
+Census day one adds roughly 11,000 listings never seen before. Any later day that falls
+back to a partial harvest makes 85% of them vanish at once, which is **not** a wave of
+sales.
+
+- Treat the 15% -> 100% transition as a **censoring event**. Any absence computed across
+  that boundary is invalid.
+- The exit-rule table below (N = 5/6) was fitted entirely on ~2,010-row days. It stands
+  for that era only and **must not be pooled** with census days.
+- Re-run `exit_rule.py` once census days accumulate, conditioned on per-day coverage.
+  `scrape_run.rows_ok` plus the per-day counts are what that conditioning reads.
+
+### Verified, not assumed
+
+- 9 scraper tests pass (`tests/test_collect.py` is new — an interrupted walk keeps its
+  finished batches, a dry run writes nothing, a complete walk flushes its remainder),
+  plus `test_train.py` 4 passed and `exit_rule.py --test` ok.
+- Bounded live run, `--max 600`: **flushed 513 rows at page 24, mid-walk** — the whole
+  point. Ran twice; 08-08 went 2,020 -> 2,105 rows, so idempotency held (1,219 rows
+  written, 85 net new) and the +85 are listings the morning's 15% sample had missed.
+- Thin run exits 1 and logs `under_threshold` — `scrape_run` ids 37 and 38 confirm it.
+- `--dry-run --max 100` printed no flush line and left the count at 2,105.
+- Not re-tested live: a real `^C` mid-walk. The stubbed test pins it, and re-proving it
+  against motortrader costs ~28 pages of crawl for a weaker signal.
+
+**Next action: read `logs/scrape.log` after the 08-09 10:00 run.** Four things, and the
+run is only a census if all four hold:
+
+1. `"no new listings for 3 pages, assuming end of results"` **appears**
+2. `"reached max_listings"` does **not** appear — if it does, the site grew past 20,000
+3. page count lands near **543**, listings near **13,029**
+4. wall time is inside the 2 h `ExecutionTimeLimit` in `install_task.ps1` (~45 min expected)
+
+Then, still open and unchanged: the healthchecks.io dashboard check below, and the
+laptop collector.
 
 ## 2026-08-08 (same session) — the exit rule, fitted not guessed
 
@@ -82,7 +162,8 @@ fixes, independent of each other —
 
 Audit scripts were throwaway (scratchpad, read-only, no writes to Supabase).
 
-**Next action (start here): install the backup collector on the laptop (model 83JN).**
+**Next action (superseded — see the 08-09 log check at the top): install the backup
+collector on the laptop (model 83JN).**
 One step at a time:
 
 1. `git clone https://github.com/TALVIN29/LotClock C:\LotClock`
@@ -167,7 +248,10 @@ Full walkthrough: `SETUP.md`
   - [x] Windows scheduled task registered, verified running
   - [x] Second day's run — proves the time series (2026-07-20)
   - [x] 7 days of collection — 07-25 → 07-31, clean
-  - [ ] Second collector host (laptop) so one machine being off is not a gap ← NEXT
+  - [x] Full census — cap raised past the real end of results, `.env` raised to match
+  - [x] Per-batch writes so a 45-min run survives being killed
+  - [ ] Confirm the 08-09 run is a real census (4 checks at the top) ← NEXT
+  - [ ] Second collector host (laptop) so one machine being off is not a gap
 - [ ] 2. Spec join table + government data (JPJ, fuel, OPR)
 - [ ] 3. Entity resolution + credibility scorer
 - [ ] 4. Model v0
