@@ -1,21 +1,43 @@
 # LotClock — Progress
 
-**Status:** phase 1 — **collecting.** 2,016 rows in Supabase, task scheduled daily.
+**Status:** phase 1 — **collecting.** 32,178 rows in Supabase across **16 observed
+days** of 21 calendar days since day 0. Desktop scheduled task `Ready`, next run
+2026-08-09 10:00.
 **Repo:** https://github.com/TALVIN29/LotClock (public, `main` is default)
 **Data collection started: 2026-07-19** ← day 0 of the only asset that compounds
-**Hours spent:** ~6 / 18
-**Last session:** 2026-07-19 (evening) — scheduled task was silently broken by
-the `price-story` → `LotClock` folder rename and re-registered; dead-man's
-switch armed; email sent to motortrader; README corrected where it claimed a
-GitHub Actions pipeline that doesn't run and cited market figures with no
-source. GitHub Actions remains blocked by Cloudflare (see blocker below).
+**Continuity:** longest clean streak **7 days (07-25 → 07-31)**. Current streak **2
+days (08-07, 08-08)**. Gaps: 07-24, 08-01, 08-02, 08-03, 08-06 — see the log below.
+**Hours spent:** ~7 / 18
+**Last session:** 2026-08-08 — continuity audit. Counted rows per day straight out of
+Supabase instead of trusting `logs/scrape.log`, and back-filled 20 unrecorded runs into
+the collection log below. Found that 07-24 started, was killed with `^C`, and wrote
+**zero** rows — the log's `RUN STARTED` line had been hiding a lost day. Single-host
+collection is the root cause of every gap; the laptop is the fix.
 
-**Next action (start here): install the backup collector on the laptop.**
-Clone the repo there, copy `.env` across by hand (it is gitignored), then run
-`install_task.ps1 -Backup` as admin. Verified on the desktop 2026-08-05:
-`--skip-if-collected` exits 0 without scraping when the day is already covered,
-and the 5 existing tests still pass. See the 2026-08-05 decision below for why
-gaps are now modelled rather than engineered away.
+**Next action (start here): install the backup collector on the laptop (model 83JN).**
+One step at a time:
+
+1. `git clone https://github.com/TALVIN29/LotClock C:\LotClock`
+2. copy `.env` across by hand — it is gitignored and must never be committed
+3. create `.venv` there and `pip install -r requirements.txt`
+4. `python -m scraper.run --dry-run` — proves fetch + parse work on that host before
+   anything is scheduled
+5. `powershell -ExecutionPolicy Bypass -File C:\LotClock\install_task.ps1 -Backup`
+   as admin — registers `LotClock daily scrape (backup)` at 8pm with
+   `--skip-if-collected`
+
+Verified on the desktop 2026-08-05: `--skip-if-collected` exits 0 without scraping when
+the day is already covered, and the 5 existing tests still pass, so the backup host adds
+no load on motortrader on days the desktop already ran. See the 2026-08-05 decision
+below for why gaps are modelled rather than engineered away.
+
+**Also open: the dead-man's switch has never been proven to fire.** `HEALTHCHECK_URL`
+is pinged from `scraper/run.py`, but no alert has been confirmed for the 08-01→08-03 or
+08-06 gaps, and this cannot be checked from the code side — the ping URL exposes no
+history. Open the healthchecks.io dashboard, read the event history for 08-01 and 08-06,
+and confirm period = 1 day, grace ≤ 6 h, and an email destination that actually exists.
+Record the verdict here with the event timestamp. Until then, treat gap detection as
+manual.
 
 **Earlier next-action list (day-1 checks, kept for reference):**
 1. **2026-07-20 after 10:00 — the day-1 checks. This is the whole session.**
@@ -75,8 +97,9 @@ Full walkthrough: `SETUP.md`
   - [x] Repo secrets set
   - [x] **First run verified end-to-end — 216 rows in the database**
   - [x] Windows scheduled task registered, verified running
-  - [ ] Second day's run — proves the time series ← NEXT
-  - [ ] 7 days of collection
+  - [x] Second day's run — proves the time series (2026-07-20)
+  - [x] 7 days of collection — 07-25 → 07-31, clean
+  - [ ] Second collector host (laptop) so one machine being off is not a gap ← NEXT
 - [ ] 2. Spec join table + government data (JPJ, fuel, OPR)
 - [ ] 3. Entity resolution + credibility scorer
 - [ ] 4. Model v0
@@ -85,7 +108,9 @@ Full walkthrough: `SETUP.md`
 
 ## Phase 1 exit gates
 
-- [ ] Runs 7 consecutive days unattended, zero manual intervention
+- [x] Runs 7 consecutive days unattended, zero manual intervention — 07-25 → 07-31.
+      Broke afterwards: 5 gap days in 21 (07-24, 08-01…03, 08-06), all one host being
+      off. Re-gate as **7 consecutive days with two hosts live**
 - [x] ≥2,000 unique listings captured — 2,016 on day 0
 - [ ] **≥1 price change captured for the same `listing_id`** ← the real gate
 - [ ] ≥1 delisting captured
@@ -93,6 +118,10 @@ Full walkthrough: `SETUP.md`
       2026-07-19 (healthchecks.io, `HEALTHCHECK_URL` set, ping test-fired
       through `ping_healthcheck()` and returned 200). Still unverified: proving
       it goes *red* requires letting one period + grace lapse with no ping.
+      **2026-08-08: four such lapses have now happened by accident (08-01…08-03,
+      08-06) and it is still unknown whether any alert arrived.** Check the
+      healthchecks.io event history for those dates — if nothing fired, the switch is
+      decoration.
 
 ## Decisions made (and why)
 
@@ -217,10 +246,50 @@ two half-built ones.
 
 ## Collection log (append each run)
 
+Row counts read from Supabase on 2026-08-08 (`count=exact` per `scraped_at`), not from
+`logs/scrape.log` — a run can start, log, and still write nothing. Gap rows are recorded
+deliberately: the survival model has to know which days were *observed*, and a missing
+row in this table is indistinguishable from a day nobody looked.
+
 | date | rows | source | notes |
 |------|------|--------|-------|
-| 2026-07-19 | 216 | local PC | first verified end-to-end run; GitHub Actions 403 |
-| 2026-07-19 | 2,012 | scheduled task | **2,016 total.** Price range RM 4,800 – RM 6,888,000 |
+| 2026-07-19 | 2,016 | local PC + scheduled task | day 0; two runs, `on_conflict` bug found and fixed. Price range RM 4,800 – RM 6,888,000 |
+| 2026-07-20 | 2,011 | scheduled task | second day — time series exists |
+| 2026-07-21 | 2,013 | scheduled task | |
+| 2026-07-22 | 2,002 | scheduled task | |
+| 2026-07-23 | 2,020 | scheduled task | |
+| 2026-07-24 | **0** | — GAP — | run started 20:58, killed with `^C`, wrote nothing. See below |
+| 2026-07-25 | 2,002 | scheduled task | streak restarts |
+| 2026-07-26 | 2,014 | scheduled task | |
+| 2026-07-27 | 2,014 | scheduled task | |
+| 2026-07-28 | 2,009 | scheduled task | |
+| 2026-07-29 | 2,004 | scheduled task | |
+| 2026-07-30 | 2,011 | scheduled task | |
+| 2026-07-31 | 2,015 | scheduled task | **7 clean days (07-25 → 07-31)** — longest so far |
+| 2026-08-01 | **0** | — GAP — | desktop off |
+| 2026-08-02 | **0** | — GAP — | desktop off |
+| 2026-08-03 | **0** | — GAP — | desktop off |
+| 2026-08-04 | 2,013 | scheduled task | `-StartWhenAvailable` caught up only the day it came back, not the three missed |
+| 2026-08-05 | 2,005 | scheduled task | parser swapped regex → selectors, output byte-identical |
+| 2026-08-06 | **0** | — GAP — | desktop off |
+| 2026-08-07 | 2,009 | scheduled task | |
+| 2026-08-08 | 2,020 | scheduled task | **32,178 rows total, 16 observed days of 21** |
+
+## Lost day 2026-07-24: a run that started, logged, and wrote nothing
+
+`logs/scrape.log` shows `RUN STARTED Fri 07/24/2026 20:58:30`, then `^C`, then nothing
+— no `RUN FINISHED`, no error, no row in the database. Something interrupted it: a
+closed console or a shutdown while it was walking the index.
+
+This is a **third** failure mode, and the one the existing guards miss:
+
+1. the task never fires — no log line at all (the folder-rename bug)
+2. the task fires and fails — `RUN FINISHED ... exit=1`
+3. **the task fires, logs `RUN STARTED`, and dies silently** — looks like a *successful*
+   day if you only skim for start lines
+
+Guard: never infer a collected day from the log. `scraped_at` counts in Supabase are the
+only record that matters, which is exactly what the query at the top of this log does.
 
 ## Bug found and fixed 2026-07-19: re-runs were not idempotent
 
