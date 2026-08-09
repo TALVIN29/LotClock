@@ -1,21 +1,120 @@
 # LotClock — Progress
 
-**Status:** phase 1 — **collecting.** 32,178 rows in Supabase across **16 observed
-days** of 21 calendar days since day 0. Desktop scheduled task `Ready`, next run
-2026-08-09 10:00.
+**Status:** phase 1 — **collecting, now at full coverage.** 44,655 rows in Supabase
+across **17 observed days** of 22 calendar days since day 0. Desktop scheduled task
+`Ready`, next run 2026-08-10 10:00.
 **Repo:** https://github.com/TALVIN29/LotClock (public, `main` is default)
 **Data collection started: 2026-07-19** ← day 0 of the only asset that compounds
-**Continuity:** longest clean streak **7 days (07-25 → 07-31)**. Current streak **2
-days (08-07, 08-08)**. Gaps: 07-24, 08-01, 08-02, 08-03, 08-06 — see the log below.
-**Hours spent:** ~8 / 18
-**Previous session:** 2026-08-08 — continuity audit. Counted rows per day straight out of
-Supabase instead of trusting `logs/scrape.log`, and back-filled 20 unrecorded runs into
-the collection log below. Found that 07-24 started, was killed with `^C`, and wrote
-**zero** rows — the log's `RUN STARTED` line had been hiding a lost day. Single-host
-collection is the root cause of every gap; the laptop is the fix.
+**Continuity:** longest clean streak **7 days (07-25 → 07-31)**. Current streak **3
+days (08-07, 08-08, 08-09)**. Gaps: 07-24, 08-01, 08-02, 08-03, 08-06 — see the log below.
+**Coverage regime:** 07-19 → 08-08 are ~15% partial harvests (~2,010 rows/day).
+**2026-08-09 is the first full census (12,392 rows).** Never pool the two.
+**Hours spent:** ~10 / 18
+**Previous session:** 2026-08-08 — continuity audit, the fitted exit rule, and arming the
+full census. See the three 08-08 sections below.
 
-**Last session:** 2026-08-08 (later) — armed the full census and made it survivable.
-See the section directly below; that is where to start reading.
+**Last session:** 2026-08-09 — the census fired and passed all four checks, and the first
+price-movement numbers came out of the data. See the section directly below; that is where
+to start reading.
+
+## 2026-08-09 — the census landed, and the first price numbers exist
+
+### The census passed all four checks
+
+Read out of `logs/scrape.log`, not assumed:
+
+1. `no new listings for 3 pages, assuming end of results` — **present**. The crawl
+   stopped because it ran out of cars.
+2. `reached max_listings` — **absent**, for the first time in 17 runs.
+3. **543 real pages**, `collected 12392 listings, 12347 with a price, 0 page failures`.
+   Pages 544–546 returned 12 parsed / 0 new each — that is the featured block repeating,
+   which is exactly the artefact the 08-08 audit predicted and why a naive last-page
+   probe reports 6,399.
+4. `14:17:17 → 15:11:51`, **54.5 min**, well inside the 2 h `ExecutionTimeLimit`. exit=0.
+
+Per-batch flushing worked in production, not just in the stub test: `flushed 507 rows,
+12190 written so far` mid-walk, then `flushed 202 rows` at the end. A kill at minute 50
+would have cost 202 rows, not 12,392.
+
+Supabase confirms **12,392 rows for 2026-08-09** — the log and the database agree exactly.
+Total **44,655 rows, 17 observed days**. Coverage went 15% → ~95% of the stated 13,029
+(the site's own count moves day to day; 12,392 is what actually existed at 14:17).
+
+### The dead-man's switch works — verified on the dashboard, and it is too twitchy
+
+Check `My First Check`, uuid `63a29a98…f7a640`. **Period 1 day, grace 2 hours, one
+notification method: email to talvinleegenwei0329@gmail.com, ON.** It is not unproven
+any more, and it is not broken:
+
+| event | what it was |
+|---|---|
+| `Aug 1 12:09  up ➔ down` | the 08-01→08-03 gap. **It fired.** |
+| `Aug 4 11:20  down ➔ up` | desktop came back |
+| `Aug 7 00:47  up ➔ down` | the 08-06 gap. **It fired.** |
+| `Aug 7 11:19  down ➔ up` | desktop came back |
+
+August shows 4 downtimes / 87.58% uptime, July 6 downtimes / 95.88%.
+
+**But most of those downtimes were not lost days.** `Jul 26 20:20 down ➔ 20:27 up` and
+`Aug 8 13:19 down ➔ 16:54 up` are days that collected fine — the run simply started
+later than the day before. With period 1 day + grace 2 h, the switch is really asserting
+"pings land within 26 h of each other", and run times have ranged 10:00 → 23:34. So it
+alerts on *lateness*, not only on *absence*.
+
+That matters because a switch that cries wolf gets ignored, which is the same failure as
+a switch that never fires. **Recommended change (not made — it is an account setting):
+grace 2 h → 12 h.** The requirement is "a day got collected", not "collected on time".
+Nothing in the repo changes.
+
+### First Phase 1 measurement — `price_moves.py` (new)
+
+Same shape as `exit_rule.py`: reuses its `load_env()`, reads Supabase read-only, and
+self-checks with `python price_moves.py --test` (passes) before it is pointed at real
+data. Window is **07-19 → 08-08, 16 observed days, partial-harvest regime only** —
+`CENSUS_FROM = "2026-08-09"` excludes the census day, because 11,000 listings appearing
+at once is a coverage change and an absence measured across it is meaningless.
+
+Verbatim output:
+
+```
+window: 2026-07-19 .. 2026-08-08  (16 observed days, partial-harvest regime only; 2026-08-09 census excluded)
+listings seen in window: 2,315
+  listings_multi_day: 2288
+  listings_cut: 150
+  cut_rate_pct: 6.56
+  raises: 5
+  median_first_cut_pct: 2.07
+  median_first_cut_myr: 4000
+  median_obs_days_to_first_cut: 7.0
+  median_total_discount_pct: 2.21
+exit rule N = 5 observed days
+  exited: 68
+  censored: 2247
+  censored_pct: 97.1
+  median_dom_obs_days_exited: 5.0
+```
+
+**The candidate headline number: 6.6% of Malaysian used-car listings cut their price
+within three weeks, and the typical first cut is RM 4,000 — about 2% off ask.** Price
+raises are almost nonexistent (5 across the whole window), so this is a one-directional
+market. That is a number that exists nowhere else, which is the entire Phase 1 milestone.
+
+**What it is not, and the teardown must say so:**
+
+- **97.1% right-censored.** 2,247 of 2,315 listings were still alive when the window
+  ended. `median_dom_obs_days_exited = 5.0` is therefore **not** the median days-on-market
+  — only listings that died fast *can* be observed dying in a 16-day window. Quoting 5
+  days as "how long a car takes to sell" would be flatly wrong. This is precisely why
+  the project needs survival analysis and not an average.
+- The 6.56% cut rate is over ~3 weeks of a 15% sample of the site, not over a listing's
+  lifetime. It is a floor, not the rate.
+- `median_obs_days_to_first_cut = 7` observed days ≈ 9 calendar days once the gaps are
+  counted back in. Report it in observed days.
+- Everything above dies the moment census days are pooled in. Re-run once there are
+  enough census days to stand on their own, and never merge the two eras.
+
+**Next action:** the laptop collector (below) — it is the only thing still blocking
+Phase 0. Then the teardown writeup off the numbers above.
 
 ## 2026-08-08 (later) — full census armed, and a 45-minute run made interruptible
 
@@ -83,16 +182,8 @@ sales.
 - Not re-tested live: a real `^C` mid-walk. The stubbed test pins it, and re-proving it
   against motortrader costs ~28 pages of crawl for a weaker signal.
 
-**Next action: read `logs/scrape.log` after the 08-09 10:00 run.** Four things, and the
-run is only a census if all four hold:
-
-1. `"no new listings for 3 pages, assuming end of results"` **appears**
-2. `"reached max_listings"` does **not** appear — if it does, the site grew past 20,000
-3. page count lands near **543**, listings near **13,029**
-4. wall time is inside the 2 h `ExecutionTimeLimit` in `install_task.ps1` (~45 min expected)
-
-Then, still open and unchanged: the healthchecks.io dashboard check below, and the
-laptop collector.
+**Next action (done — see the 2026-08-09 section at the top): read `logs/scrape.log`
+after the 08-09 10:00 run.** All four criteria held.
 
 ## 2026-08-08 (same session) — the exit rule, fitted not guessed
 
@@ -162,8 +253,16 @@ fixes, independent of each other —
 
 Audit scripts were throwaway (scratchpad, read-only, no writes to Supabase).
 
-**Next action (superseded — see the 08-09 log check at the top): install the backup
-collector on the laptop (model 83JN).**
+**STILL THE ONLY THING BLOCKING PHASE 0 (2026-08-09): install the backup
+collector on the laptop (model 83JN).** Must be run *on the laptop*.
+
+⚠️ **Re-check the 8pm timing before trusting it.** `--skip-if-collected` now counts rows
+against `SCRAPE_MIN_EXPECTED` (8,000) via `store.day_row_count()`, not mere existence.
+The desktop's census takes ~55 min from 10:00, so it is done long before 8pm and the
+laptop will correctly skip. But if the desktop ever starts late enough to still be
+walking at 8pm, the laptop sees a sub-threshold count and starts a **second** 543-page
+census against motortrader the same evening. If desktop run times drift later, move the
+backup task later too.
 One step at a time:
 
 1. `git clone https://github.com/TALVIN29/LotClock C:\LotClock`
@@ -425,7 +524,8 @@ row in this table is indistinguishable from a day nobody looked.
 | 2026-08-05 | 2,005 | scheduled task | parser swapped regex → selectors, output byte-identical |
 | 2026-08-06 | **0** | — GAP — | desktop off |
 | 2026-08-07 | 2,009 | scheduled task | |
-| 2026-08-08 | 2,020 | scheduled task | **32,178 rows total, 16 observed days of 21** |
+| 2026-08-08 | 2,105 | scheduled task | 2,020 from the 10:00 run + 85 net new from two bounded `--max 600` test runs |
+| 2026-08-09 | **12,392** | scheduled task | **first full census** — 543 pages, ended on exhaustion not on the cap, 54.5 min. **44,655 rows total, 17 observed days of 22** |
 
 ## Lost day 2026-07-24: a run that started, logged, and wrote nothing
 
