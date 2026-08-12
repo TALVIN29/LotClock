@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import json
 import os
+import time
+import urllib.error
 import urllib.request
 from datetime import date
 
@@ -52,9 +54,19 @@ def _post(table: str, rows: list[dict], *, on_conflict: str | None = None) -> No
         },
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=60) as r:
-        if r.status >= 300:
-            raise RuntimeError(f"supabase {table} returned {r.status}")
+    # Retry: a single transient blip used to kill a 45-minute census mid-walk
+    # (2026-08-11 and 08-12 both died here, WinError 10060). The write is
+    # idempotent on (listing_id, scraped_at), so re-POSTing a batch is safe.
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                if r.status >= 300:
+                    raise RuntimeError(f"supabase {table} returned {r.status}")
+            return
+        except (urllib.error.URLError, TimeoutError, ConnectionError):
+            if attempt == 2:
+                raise
+            time.sleep(10 * (attempt + 1))
 
 
 def day_row_count(scraped_at: date | None = None) -> int:
