@@ -22,3 +22,4 @@ web/out/
 data/
 *.db
 logs/
+.scrapling_adaptive.db*

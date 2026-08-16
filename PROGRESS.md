@@ -1,20 +1,67 @@
 # LotClock — Progress
 
-**Status:** phase 1 — **collecting, now at full coverage.** 44,655 rows in Supabase
-across **17 observed days** of 22 calendar days since day 0. Desktop scheduled task
-`Ready`, next run 2026-08-10 10:00.
+**Status:** phase 1 — **collecting at census coverage, but finishing unreliably.**
+106,004 rows in Supabase across **23 observed days** of 29 calendar days since day 0.
+Desktop scheduled task `Ready`, next run 2026-08-17 10:00; last result
+`0xC000013A` (forced terminate).
 **Repo:** https://github.com/TALVIN29/LotClock (public, `main` is default)
 **Data collection started: 2026-07-19** ← day 0 of the only asset that compounds
 **Continuity:** longest clean streak **7 days (07-25 → 07-31)**. Current streak **3
-days (08-07, 08-08, 08-09)**. Gaps: 07-24, 08-01, 08-02, 08-03, 08-06 — see the log below.
+days (08-14 → 08-16)**, but only 08-14 finished cleanly. Gaps: 07-24, 08-01, 08-02,
+08-03, 08-06, 08-13. Thin day: 08-15 (4,097). See the log below.
 **Coverage regime:** 07-19 → 08-08 are ~15% partial harvests (~2,010 rows/day).
-**2026-08-09 is the first full census (12,392 rows).** Never pool the two.
-**Hours spent:** ~10 / 18
-**Previous session:** 2026-08-08 — continuity audit, the fitted exit rule, and arming the
-full census. See the three 08-08 sections below.
+**2026-08-09 onward is census era (~12,400 rows/day).** Never pool the two.
+**Census days safe to model on: 08-09, 08-10, 08-12, 08-14** — the four that ran to
+exhaustion. 08-11 and 08-16 are near-complete but unfinished; 08-15 is thin.
+**Hours spent:** ~12 / 18
+**Previous session:** 2026-08-12 → 08-14 — Supabase write retry, first teardown, index page.
+**Last session:** 2026-08-16 — continuity re-audit against the database. Three of the
+last six runs were killed mid-walk. See the section directly below; that is where to
+start reading.
 
-**Last session:** 2026-08-09 — the census fired and passed all four checks, and the first
-price-movement numbers came out of the data. See the section directly below; that is where
+## 2026-08-16 — the log lies again, and this time the reason is stdout buffering
+
+Per-day counts read from Supabase (`store.day_row_count`), never from the log:
+
+```
+08-09 12392   08-10 12370   08-11  8153   08-12 12649
+08-13   GAP   08-14 12378   08-15  4097   08-16 11702
+```
+
+**`logs/scrape.log` disagrees, and the log is the one that is wrong.** It records
+`RUN FINISHED` for only 08-10, 08-12 and 08-14 in that span, and `scrape_run` (written
+by `log_run`, at the *end* of a run) has no row for 08-11, 08-15 or 08-16 either.
+Yet those days hold 8,153 / 4,097 / 11,702 rows.
+
+Both symptoms have one cause: **a killed process loses buffered stdout and never reaches
+`log_run`.** 08-15 is the clean demonstration — the log holds `RUN STARTED 17:40:33` then
+`^C` and nothing between, while the database holds 4,097 rows the run demonstrably
+collected before it died. The per-batch flush added on 08-08 is what saved those rows;
+under the old all-or-nothing write, 08-11, 08-15 and 08-16 would all read as zero.
+
+Consequences, in order of importance:
+
+1. **Row counts are the only ground truth.** `RUN FINISHED`, `scrape_run.status`, and
+   `Get-ScheduledTaskInfo` are all end-of-run artefacts and all three go missing together
+   whenever the process is killed. Any continuity claim must come from
+   `day_row_count()`.
+2. **A day above threshold is not the same as a census.** A census is proved by
+   `no new listings for 3 pages` — the exhaustion line. Only 08-09, 08-10, 08-12 and
+   08-14 have it. 08-11 (8,153) and 08-16 (11,702) clear `SCRAPE_MIN_EXPECTED=8000`
+   but stopped early, so their absences are partly coverage, not sales. **Condition on
+   the exhaustion line, not on the row count, before modelling exits.**
+3. **`SCRAPE_MIN_EXPECTED=8000` passes days that are ~34% short.** 08-11 is 8,153 against
+   a ~12,400 census. It labels catastrophe, not incompleteness.
+4. Today's kill is `LastTaskResult = 0xC000013A` = `STATUS_CONTROL_C_EXIT`. Started
+   11:49:55, died around page 387 of ~545. Cause is host-side (sleep / logoff / manual),
+   not scraper code — the walk was clean to that point, 0 page failures.
+
+**Root cause is unchanged and is still the single collector host.** The gaps changed
+shape — from "never ran" to "ran and was killed" — but not origin. Skipped this session
+by choice; it remains the Phase 0 blocker.
+
+**Next action:** decide Phase 2 (Kaggle dataset) scope on the four proven census days,
+or fix the kill problem first. Nothing else is blocking.
 to start reading.
 
 ## 2026-08-09 — the census landed, and the first price numbers exist
@@ -526,6 +573,13 @@ row in this table is indistinguishable from a day nobody looked.
 | 2026-08-07 | 2,009 | scheduled task | |
 | 2026-08-08 | 2,105 | scheduled task | 2,020 from the 10:00 run + 85 net new from two bounded `--max 600` test runs |
 | 2026-08-09 | **12,392** | scheduled task | **first full census** — 543 pages, ended on exhaustion not on the cap, 54.5 min. **44,655 rows total, 17 observed days of 22** |
+| 2026-08-10 | 12,370 | scheduled task | census, `ok` |
+| 2026-08-11 | 8,153 | scheduled task | **killed mid-walk** — no `RUN FINISHED`, no `scrape_run` row; the 8,153 survive only because writes flush per batch. Above the 8,000 threshold, so usable |
+| 2026-08-12 | 12,649 | scheduled task | first attempt exit=1 at 20:10, retry 20:56 `ok` (12,426); the extra 223 are the failed attempt's flushed batches |
+| 2026-08-13 | **0** | — GAP — | desktop off |
+| 2026-08-14 | 12,378 | scheduled task | census, `ok` — last clean finish |
+| 2026-08-15 | 4,097 | scheduled task | **killed mid-walk.** Log shows `RUN STARTED 17:40` then `^C` and nothing else — python's stdout was buffered and died with the process. **Thin day: below the 8,000 threshold, do not treat as a census** |
+| 2026-08-16 | 11,702 | scheduled task | **killed mid-walk** at ~page 387. `LastTaskResult = 0xC000013A` (forced terminate). Near-complete but unfinished — no exhaustion line, so coverage is unproven |
 
 ## Lost day 2026-07-24: a run that started, logged, and wrote nothing
 
@@ -585,3 +639,9 @@ having before day 30:
 
 Neither is built yet. Until one is, verify the task after any folder move:
 `(Get-ScheduledTask -TaskName "LotClock daily scrape").Actions.Execute`
+
+## Fix shipped 2026-08-16: `-u` in `run_daily.cmd`
+
+`python -m scraper.run` became `python -u -m scraper.run`. One flag, unbuffered stdout,
+so a killed run leaves its real progress in the log instead of a bare `^C`. It does not
+prevent kills — only the second collector host does that — it makes them diagnosable.

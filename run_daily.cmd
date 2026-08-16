@@ -12,7 +12,7 @@ echo ================================================== >> logs\scrape.log
 echo RUN STARTED %DATE% %TIME% >> logs\scrape.log
 
 REM Extra args pass through, so the backup host can add --skip-if-collected.
-".venv\Scripts\python.exe" -m scraper.run %* >> logs\scrape.log 2>&1
+".venv\Scripts\python.exe" -u -m scraper.run %* >> logs\scrape.log 2>&1
 set EXITCODE=%ERRORLEVEL%
 
 echo RUN FINISHED %DATE% %TIME% exit=%EXITCODE% >> logs\scrape.log
