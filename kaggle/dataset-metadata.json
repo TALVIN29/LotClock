@@ -2,13 +2,131 @@
   "title": "Malaysian Used-Car Listings — Daily Snapshots",
   "id": "talvinlee/malaysian-used-car-listings-daily-snapshots",
   "subtitle": "Daily append-only snapshots of a Malaysian used-car index",
-  "description": "Daily snapshots of a Malaysian used-car listing index, collected since 2026-07-19 and still running. Append-only: a price change is a new dated row, never an overwrite, so price cuts and delistings are directly measurable.\n\nTwo files. Read lotclock_daily_coverage.csv first: it says which days were actually walked properly, because a listing being absent means nothing on a day the crawl was capped or killed mid-run. lotclock_listings.csv has one row per listing in the full-census era, with duration and event columns ready for survival analysis.\n\nRight-censoring is severe at the current window length (99.9%), so days-on-market is not estimable yet and any median of the observed exits is survivorship bias. The starter notebook shows this rather than hiding it. The sample is one dealer-heavy, premium- and Klang-Valley-skewed index, not the Malaysian market.\n\nCollected honouring robots.txt and the published crawl-delay, no evasion, public index only, no personal data. Derived tables only, no raw HTML. Full method and caveats in DATA_CARD.md.",
-  "licenses": [{ "name": "CC-BY-NC-SA-4.0" }],
+  "description": "Daily snapshots of a Malaysian used-car listing index (motortrader.com.my), collected since 2026-07-19 and still running. Append-only: a price change is a new dated row, never an overwrite, so price cuts and delistings are directly measurable.\n\nMalaysian used-car *listing dynamics* — how long cars sit, how much sellers cut — are not published anywhere. Asking prices are everywhere; what happens to a listing over time is not.\n\nTwo files. Read lotclock_daily_coverage.csv first: it says which days were actually walked properly, because a listing being absent means nothing on a day the crawl was capped or killed mid-run. lotclock_listings.csv has one row per listing in the full-census era, with duration and event columns ready for survival analysis.\n\nHow to use it honestly:\n- Do not pool the coverage eras. Before 2026-08-09 the crawl harvested only ~15% of the site.\n- Duration is in observed days, not calendar days. Collection has gaps.\n- event_exited is not \"sold\". A delisting can be a sale, an expiry, or a seller giving up. No sale price is ever visible.\n- Right-censoring is severe (99.9% at the current window length), so median days-on-market is NOT estimable yet. A median of the observed exits is survivorship bias. The starter notebook shows this rather than hiding it.\n- The sample is one dealer-heavy index skewing premium and Klang Valley (median asking price around RM 181,000; KL plus Selangor are ~98% of rows). It is not the Malaysian market.\n- make/model come from a naive title split, so \"LAND ROVER\" parses as make LAND, model ROVER. Apply a marque list if you need clean makes.\n\nCollected honouring robots.txt and the published crawl-delay. No proxy rotation, no IP rotation, no evasion, no login-walled content. Public index only. No personal data of any seller is collected or published, and raw HTML is not redistributed — derived tables only.\n\nUpdated as the observation window grows; the days-on-market question becomes answerable as it does. Full method and caveats in DATA_CARD.md. Source code: https://github.com/talvin29/LotClock",
+  "licenses": [
+    {
+      "name": "CC-BY-NC-SA-4.0"
+    }
+  ],
   "keywords": [
     "automobiles and vehicles",
     "asia",
     "time series analysis",
-    "survival analysis",
+    "data analytics",
     "beginner"
-  ]
+  ],
+  "resources": [
+    {
+      "path": "lotclock_daily_coverage.csv",
+      "description": "One row per collection day. Read this first — it declares which days were actually walked properly. A listing being absent only means something on a day the site was fully crawled; days flagged 0 are page-capped or killed mid-walk, and treating them as light days invents mass disappearances.",
+      "schema": {
+        "fields": [
+          {
+            "name": "date",
+            "description": "Collection date (YYYY-MM-DD).",
+            "type": "string"
+          },
+          {
+            "name": "listings_seen",
+            "description": "Number of listing rows harvested that day.",
+            "type": "number"
+          },
+          {
+            "name": "coverage_era",
+            "description": "partial_15pct before 2026-08-09 (crawl capped at ~15% of the site), full_census from then on. Do not pool the two eras.",
+            "type": "string"
+          },
+          {
+            "name": "is_observation_day",
+            "description": "1 only if this is a full-census day that completed (>=10,000 rows). Absence of a listing is only informative on these days.",
+            "type": "number"
+          }
+        ]
+      }
+    },
+    {
+      "path": "lotclock_listings.csv",
+      "description": "One row per listing observed on a full-census observation day, with duration and event columns prepared for survival analysis. Right-censoring is 99.9% at the current window length.",
+      "schema": {
+        "fields": [
+          {
+            "name": "listing_id",
+            "description": "Stable listing id from the source index.",
+            "type": "string"
+          },
+          {
+            "name": "make",
+            "description": "First token after the year in the listing title. Naive split: LAND ROVER parses as make LAND. Apply a marque list if you need clean makes.",
+            "type": "string"
+          },
+          {
+            "name": "model",
+            "description": "Second token after the year in the listing title. Same naive-split caveat as make.",
+            "type": "string"
+          },
+          {
+            "name": "year",
+            "description": "Model year as listed.",
+            "type": "number"
+          },
+          {
+            "name": "condition",
+            "description": "Condition as listed (e.g. USED, RECON).",
+            "type": "string"
+          },
+          {
+            "name": "transmission",
+            "description": "Transmission as listed (e.g. AUTO, MANUAL).",
+            "type": "string"
+          },
+          {
+            "name": "mileage_band",
+            "description": "Mileage band as displayed on the listing, not an odometer reading.",
+            "type": "string"
+          },
+          {
+            "name": "location_state",
+            "description": "Malaysian state as listed. KL plus Selangor are roughly 98% of rows.",
+            "type": "string"
+          },
+          {
+            "name": "first_price_myr",
+            "description": "First asking price observed for this listing, in MYR. 57 listings have no parsed price.",
+            "type": "number"
+          },
+          {
+            "name": "last_price_myr",
+            "description": "Most recent asking price observed for this listing, in MYR.",
+            "type": "number"
+          },
+          {
+            "name": "price_cut_myr",
+            "description": "first_price_myr minus last_price_myr. 0 if the asking price was never cut. This is an asking-price cut, not a negotiated discount.",
+            "type": "number"
+          },
+          {
+            "name": "observed_days_seen",
+            "description": "Number of observation days on which this listing appeared.",
+            "type": "number"
+          },
+          {
+            "name": "duration_obs_days",
+            "description": "First-to-last sighting, inclusive, counted in observed days rather than calendar days. Collection has gaps.",
+            "type": "number"
+          },
+          {
+            "name": "event_exited",
+            "description": "1 if the listing was absent for 5 consecutive observation days. NOT a sale: a delisting can be a sale, an expiry, or a seller giving up, and no sale price is ever visible. The threshold is 5 days because 81% of single-day absences reverse the next day when the site reorders under the crawl.",
+            "type": "number"
+          },
+          {
+            "name": "listed_before_census",
+            "description": "1 if the listing was already present in the partial-coverage era, meaning its true time on market started before observation began (left-truncated).",
+            "type": "number"
+          }
+        ]
+      }
+    }
+  ],
+  "expectedUpdateFrequency": "Daily"
 }

@@ -637,7 +637,13 @@ having before day 30:
 - a `collection_days` table, or a query over `distinct scraped_at`, so an
   observed day is a recorded fact rather than an inference from listing rows
 
-Neither is built yet. Until one is, verify the task after any folder move:
+**Update 2026-08-20: the dead-man's switch is built, configured and verified.**
+`ping_healthcheck()` in `scraper/run.py` fires only on a healthy run — it is skipped
+when the harvest is thin, so a degraded day goes red instead of green. `HEALTHCHECK_URL`
+is set in `.env` and a live ping returned HTTP 200 `OK`. The note above saying it was
+unbuilt was stale; it is the *observation-day table* that is still an open item.
+
+Until that exists, verify the task after any folder move:
 `(Get-ScheduledTask -TaskName "LotClock daily scrape").Actions.Execute`
 
 ## Fix shipped 2026-08-16: `-u` in `run_daily.cmd`

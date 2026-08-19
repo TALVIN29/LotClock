@@ -4,10 +4,12 @@
   "code_file": "lotclock_starter.ipynb",
   "language": "python",
   "kernel_type": "notebook",
-  "is_private": true,
+  "is_private": false,
   "enable_gpu": false,
   "enable_internet": false,
-  "dataset_sources": ["talvinlee/malaysian-used-car-listings-daily-snapshots"],
+  "dataset_sources": [
+    "talvinlee/malaysian-used-car-listings-daily-snapshots"
+  ],
   "competition_sources": [],
   "kernel_sources": []
 }
