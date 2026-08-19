@@ -24,8 +24,13 @@ cells.append(code(
     "import pandas as pd, numpy as np\n"
     "import matplotlib.pyplot as plt\n"
     "plt.rcParams['figure.figsize'] = (8, 4)\n"
-    "cov = pd.read_csv('lotclock_daily_coverage.csv', parse_dates=['date'])\n"
-    "df  = pd.read_csv('lotclock_listings.csv')\n"
+    "from pathlib import Path\n"
+    "# runs on Kaggle and locally: the input mount if it exists, else this folder\n"
+    "D = Path('/kaggle/input/malaysian-used-car-listings-daily-snapshots')\n"
+    "if not D.exists():\n"
+    "    D = Path('.')\n"
+    "cov = pd.read_csv(D / 'lotclock_daily_coverage.csv', parse_dates=['date'])\n"
+    "df  = pd.read_csv(D / 'lotclock_listings.csv')\n"
     "print(cov.shape, df.shape)\n"
     "cov.tail(12)"
 ))
@@ -132,5 +137,5 @@ cells.append(md(
 ))
 
 nb["cells"] = cells
-nbf.write(nb, "kaggle/lotclock_starter.ipynb")
-print("wrote kaggle/lotclock_starter.ipynb")
+nbf.write(nb, "kaggle_notebook/lotclock_starter.ipynb")
+print("wrote kaggle_notebook/lotclock_starter.ipynb")

@@ -1,0 +1,14 @@
+{
+  "title": "Malaysian Used-Car Listings — Daily Snapshots",
+  "id": "talvinlee/malaysian-used-car-listings-daily-snapshots",
+  "subtitle": "Daily append-only snapshots of a Malaysian used-car index",
+  "description": "Daily snapshots of a Malaysian used-car listing index, collected since 2026-07-19 and still running. Append-only: a price change is a new dated row, never an overwrite, so price cuts and delistings are directly measurable.\n\nTwo files. Read lotclock_daily_coverage.csv first: it says which days were actually walked properly, because a listing being absent means nothing on a day the crawl was capped or killed mid-run. lotclock_listings.csv has one row per listing in the full-census era, with duration and event columns ready for survival analysis.\n\nRight-censoring is severe at the current window length (99.9%), so days-on-market is not estimable yet and any median of the observed exits is survivorship bias. The starter notebook shows this rather than hiding it. The sample is one dealer-heavy, premium- and Klang-Valley-skewed index, not the Malaysian market.\n\nCollected honouring robots.txt and the published crawl-delay, no evasion, public index only, no personal data. Derived tables only, no raw HTML. Full method and caveats in DATA_CARD.md.",
+  "licenses": [{ "name": "CC-BY-NC-SA-4.0" }],
+  "keywords": [
+    "automobiles and vehicles",
+    "asia",
+    "time series analysis",
+    "survival analysis",
+    "beginner"
+  ]
+}
