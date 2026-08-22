@@ -1,23 +1,96 @@
 # LotClock — Progress
 
-**Status:** phase 1 — **collecting at census coverage, but finishing unreliably.**
-106,004 rows in Supabase across **23 observed days** of 29 calendar days since day 0.
-Desktop scheduled task `Ready`, next run 2026-08-17 10:00; last result
-`0xC000013A` (forced terminate).
+**Status:** phase 1 — **census coverage, and the reason runs kept dying is now known
+and fixed.** 164,647 rows in Supabase across **28 observed days** of 35 calendar days
+since day 0. Desktop scheduled task re-registered **S4U** 2026-08-22, so a run no
+longer dies with the desktop session.
 **Repo:** https://github.com/TALVIN29/LotClock (public, `main` is default)
 **Data collection started: 2026-07-19** ← day 0 of the only asset that compounds
-**Continuity:** longest clean streak **7 days (07-25 → 07-31)**. Current streak **3
-days (08-14 → 08-16)**, but only 08-14 finished cleanly. Gaps: 07-24, 08-01, 08-02,
-08-03, 08-06, 08-13. Thin day: 08-15 (4,097). See the log below.
+**Continuity:** longest clean streak **7 days (07-25 → 07-31)**. Gaps: 07-24, 08-01,
+08-02, 08-03, 08-06, 08-13, 08-18. Thin days: 08-15 (4,097), 08-11 (8,153),
+08-21 (8,657) — all killed mid-walk, see the section directly below.
 **Coverage regime:** 07-19 → 08-08 are ~15% partial harvests (~2,010 rows/day).
 **2026-08-09 onward is census era (~12,400 rows/day).** Never pool the two.
-**Census days safe to model on: 08-09, 08-10, 08-12, 08-14** — the four that ran to
-exhaustion. 08-11 and 08-16 are near-complete but unfinished; 08-15 is thin.
-**Hours spent:** ~12 / 18
-**Previous session:** 2026-08-12 → 08-14 — Supabase write retry, first teardown, index page.
-**Last session:** 2026-08-16 — continuity re-audit against the database. Three of the
-last six runs were killed mid-walk. See the section directly below; that is where to
-start reading.
+**Census days safe to model on: 08-09, 08-10, 08-12, 08-14, 08-17, 08-19, 08-20,
+08-22** — the eight that ran to exhaustion with `exit=0`. 08-16 (11,702) is
+near-complete but unfinished; 08-11, 08-15, 08-21 are thin.
+**Hours spent:** ~14 / 18
+**Previous session:** 2026-08-16 — continuity re-audit against the database. Three of
+the last six runs killed mid-walk, cause unidentified.
+**Last session:** 2026-08-22 — **found the cause: the scheduled task ran with
+`LogonType Interactive`.** Fixed, and 08-22 re-collected to a full census. See the
+section directly below; that is where to start reading.
+
+## 2026-08-22 — the runs were never crashing, Windows was killing them
+
+Six days of "forced terminate" (`0xC000013A`) had no explanation because the evidence
+had been thrown away: **`Microsoft-Windows-TaskScheduler/Operational` was disabled**
+(`IsEnabled: False`), so Task Scheduler recorded no history at all. The 08-16 session
+stopped at "the log lies" and never checked the task's own configuration. That was the
+miss — the answer was one `Get-ScheduledTask` away the whole time.
+
+**The signature.** Every dead run ends the same way: a literal `^C` in `scrape.log`
+and then nothing. `run_daily.cmd` never reaches its own `RUN FINISHED` line, so the
+entire process tree is hard-killed from outside. That is not a Python crash — a crash
+still lets the batch file write its last line, which is exactly what the 08-12 network
+failure did (`WinError 10060`, `exit=1`, clean `RUN FINISHED`).
+
+**The cause.** The task was registered with:
+
+```
+LogonType          : Interactive
+AllowHardTerminate : True
+StartWhenAvailable : True
+```
+
+`Interactive` means the run lives inside the logged-on desktop session, in a visible
+console window. It dies at logoff or shutdown, and anyone can close the window.
+`0xC000013A` is `STATUS_CONTROL_C_EXIT` — precisely what Windows reports for that.
+
+**Correlated against the System event log:**
+
+| Run started | Fate | Power event |
+|---|---|---|
+| 08-15 17:40:33 | `^C` ~18 min in | shutdown initiated **17:59:07** — proven |
+| 08-21 10:00:01 | `^C` ~41 min in (401 log lines) | none — session-level kill |
+| 08-22 19:24:45 | `^C` at **19:32:44** (log mtime), 8 min in | none — session-level kill |
+
+**Why the clean runs were clean, which is the uncomfortable part.** Look at the start
+times across the whole log: 11:31, 15:48, 19:47, 20:00, 20:03, 14:21, 15:03. Almost
+none fire at the scheduled 10:00 — `StartWhenAvailable` is catching up a missed trigger
+at logon. **The runs that finished are the ones where the machine was then left alone
+for ~55 minutes.** Collection was never reliable; it was a coin flip on whether the
+desk stayed empty.
+
+**Ruled out, each with evidence, so none of these gets re-investigated:**
+
+- `ExecutionTimeLimit` is `PT2H` and a census takes ~55 min — not a timeout.
+- `RunOnlyIfIdle` is `False`, so `StopOnIdleEnd: True` is inert — not the idle killer.
+- `powercfg /q ... STANDBYIDLE` is `0` (never) and `/lastwake` is empty — not sleep.
+
+**Fixed 2026-08-22** (elevated, `~/Downloads/lotclock-fix-task.ps1`; previous task
+definition backed up to `~/Downloads/LotClock-task-backup-20260822.xml`):
+
+1. `Microsoft-Windows-TaskScheduler/Operational` **enabled** — the next kill names itself.
+2. Principal re-registered **`LogonType S4U`** ("run whether user is logged on or not").
+   Session 0, no console window, survives logoff. This is the actual fix.
+3. `RestartCount = 2`, `RestartInterval = PT30M` — a killed run retries instead of
+   costing a day.
+
+**Verified so far:** 08-22 re-collected end to end after the change —
+`RUN FINISHED Sat 08/22/2026 20:34:00.08 exit=0`, 12,508 listings, 12,468 with a
+price, **0 page failures**, day total 12,614 (the killed 1,759-row partial merged
+idempotently, as designed).
+
+**NOT yet verified, and this is the real gate:** that run was started by hand from a
+logged-on session, so it does not prove S4U works. **The proof is the next unattended
+10:00 trigger finishing while logged out.** Check `Get-ScheduledTaskInfo` for
+`LastTaskResult 0x0` plus a matching `RUN FINISHED ... exit=0`. If S4U fails it will
+fail loudly — the account may need the "Log on as a batch job" right.
+
+**What this does not fix:** a real shutdown mid-run, which is what killed 08-15.
+Nothing running on one host can. That is the second-host argument, deliberately
+deferred.
 
 ## 2026-08-16 — the log lies again, and this time the reason is stdout buffering
 
@@ -396,8 +469,11 @@ Full walkthrough: `SETUP.md`
   - [x] 7 days of collection — 07-25 → 07-31, clean
   - [x] Full census — cap raised past the real end of results, `.env` raised to match
   - [x] Per-batch writes so a 45-min run survives being killed
-  - [ ] Confirm the 08-09 run is a real census (4 checks at the top) ← NEXT
+  - [x] Confirm the 08-09 run is a real census (4 checks at the top)
+  - [x] Diagnose the `0xC000013A` kills — `LogonType Interactive`, fixed via S4U 08-22
+  - [ ] Confirm S4U with one unattended 10:00 run finishing while logged out ← NEXT
   - [ ] Second collector host (laptop) so one machine being off is not a gap
+        — deferred: only covers mid-run shutdown, and LotClock is now a proof piece
 - [ ] 2. Spec join table + government data (JPJ, fuel, OPR)
 - [ ] 3. Entity resolution + credibility scorer
 - [ ] 4. Model v0
