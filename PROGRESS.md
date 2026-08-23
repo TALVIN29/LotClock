@@ -717,7 +717,7 @@ having before day 30:
 `ping_healthcheck()` in `scraper/run.py` fires only on a healthy run — it is skipped
 when the harvest is thin, so a degraded day goes red instead of green. `HEALTHCHECK_URL`
 is set in `.env` and a live ping returned HTTP 200 `OK`. The note above saying it was
-unbuilt was stale; it is the *observation-day table* that is still an open item.
+unbuilt was stale. The observation-day item is closed too — see below.
 
 Until that exists, verify the task after any folder move:
 `(Get-ScheduledTask -TaskName "LotClock daily scrape").Actions.Execute`
@@ -727,3 +727,25 @@ Until that exists, verify the task after any folder move:
 `python -m scraper.run` became `python -u -m scraper.run`. One flag, unbuffered stdout,
 so a killed run leaves its real progress in the log instead of a bare `^C`. It does not
 prevent kills — only the second collector host does that — it makes them diagnosable.
+
+## Observation days: derived, not a table (closed 2026-08-23)
+
+The open item above asked for a `collection_days` table. It is not needed. A day is
+an observation day if it lands enough rows, and `kaggle_export.py` already decides
+that from the snapshots themselves: `is_observation_day` compares the day's row count
+against `COMPLETE_MIN` inside the census era, and the self-check at the bottom of the
+file asserts a 1-row day is excluded. A table would restate what the rows already
+prove, and could disagree with them — a killed run would still write its "I collected
+today" row.
+
+That check earns its keep. 2026-08-21 started at 10:00 and never logged a
+`RUN FINISHED`; the export dropped it as a partial walk automatically, alongside
+08-11 and 08-15.
+
+Coverage as of 2026-08-23: **10 observation days** (08-09, 10, 12, 14, 16, 17, 19, 20,
+22, 23), 3 census days dropped as killed walks (08-11, 08-15, 08-21), 13,167 listings.
+Exits under the N=5 rule: 25, so 99.8% still censored — survival remains not estimable,
+and the notebook must keep saying so rather than quoting a median.
+
+Still open: the second collector host. It is the only thing that closes a gap caused by
+this machine being off or killing the run.
