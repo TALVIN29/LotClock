@@ -749,3 +749,33 @@ and the notebook must keep saying so rather than quoting a median.
 
 Still open: the second collector host. It is the only thing that closes a gap caused by
 this machine being off or killing the run.
+
+## Reframe decided 2026-08-24: stop waiting for days-to-sell
+
+Refitting `exit_rule.py` on all 30 observed days overturned teardown-01's exit rule.
+At 5 days absent, teardown-01 estimated an 11.7% reversal rate; the refit says
+**60.2%**. The defensible threshold moved from N=5 to **N=10**.
+
+That threshold is longer than the census era can carry. Census era is 11 observation
+days; requiring 10 days of absence yields **1 exit out of 13,172 listings** (100.0%
+censored). N=5 gives 48 (99.6%), N=3 gives 95 (99.3%) — every rule with enough events
+to model is a rule now known to be too loose. The 41-exit figure from the refit pools
+both coverage eras, which the method notes forbid; inside the clean era it is 1.
+
+Conclusion: the exit event is not in the data. What the snapshots observe is *listing
+removal* — expiry, relist, crawl miss, sale — unlabelled. More calendar time adds more
+of the same ambiguous signal, so waiting was the wrong plan. Extrapolated, a
+50%-uncensored sample lands ~April 2027 and would still be mostly housekeeping.
+
+Shipped instead: `docs/teardown-02.md`, which publishes the censoring wall itself as
+the finding. Survival model **deferred, not cancelled** — it needs a labelled exit
+(sold badge / status field on the detail page), not a longer window. That is a new
+scrape surface and triggers the PII rule, so it is a decision, not a formality.
+
+Also corrected there: the cut rate did NOT fall from 6.6% to 1.15%. The partial-harvest
+era could only see a listing twice if it survived long enough to be caught twice, so it
+oversampled long-lived listings — the ones with time to cut. Sampling artifact, labelled
+as such rather than published as a trend.
+
+Standing action: **refit `exit_rule.py` monthly.** This entry exists because a refit
+overturned a published number.

@@ -11,5 +11,6 @@ since 2026-07-19.
 ## Writing
 
 - [What three weeks of Malaysian used-car listings actually show](teardown-01)
+- [The listings will not tell you how long a car takes to sell](teardown-02)
 
 Source: [github.com/TALVIN29/LotClock](https://github.com/TALVIN29/LotClock)
