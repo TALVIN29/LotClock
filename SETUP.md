@@ -150,32 +150,44 @@ remainder as interval censoring. See the 2026-08-05 decision in `PROGRESS.md`.
 
 Run these **on the laptop**, in order.
 
+The path below is the laptop's; `install_task.ps1` uses `$PSScriptRoot`, so any
+location works — just keep it consistent with the commands that follow.
+
 Clone the repo:
 
 ```powershell
-git clone https://github.com/TALVIN29/LotClock.git C:\LotClock
+git clone https://github.com/TALVIN29/LotClock.git E:\Portfolio\LotClock
 ```
 
 Copy `.env` across **by hand** — it is gitignored and will not come with the
-clone. Use a USB stick or retype it; do not email it to yourself. Or start from
-`.env.example` and paste the Supabase values out of the dashboard again.
+clone. Use a USB stick or retype it; do not email it to yourself. If the other
+machine isn't with you, start from `.env.example` and read the values back out
+of the web dashboards — Supabase → Settings → API Keys, and healthchecks.io for
+the ping URL. Use the *same* key as the primary host, don't mint a new one.
 
-Create the venv (the scraper is stdlib-only, but the tests and notebook need it):
+Create the venv:
 
 ```powershell
-python -m venv C:\LotClock\.venv
+python -m venv E:\Portfolio\LotClock\.venv
+```
+
+Install dependencies — the scraper needs `scrapling` for parsing, so a bare
+venv is not enough:
+
+```powershell
+E:\Portfolio\LotClock\.venv\Scripts\python.exe -m pip install -r E:\Portfolio\LotClock\requirements.txt
 ```
 
 Confirm parsing works from this machine before scheduling anything:
 
 ```powershell
-C:\LotClock\.venv\Scripts\python.exe -m scraper.run --dry-run --max 80
+E:\Portfolio\LotClock\.venv\Scripts\python.exe -m scraper.run --dry-run --max 80
 ```
 
 Register the backup task, in an **Administrator** PowerShell:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File C:\LotClock\install_task.ps1 -Backup
+powershell -ExecutionPolicy Bypass -File E:\Portfolio\LotClock\install_task.ps1 -Backup
 ```
 
 `-Backup` runs at 20:00 instead of 10:00 and passes `--skip-if-collected`, so if
@@ -183,14 +195,25 @@ the desktop already took today's snapshot this host exits in about two seconds
 without touching motortrader. Redundancy must not double the request load on a
 source that grants access on the strength of good behaviour.
 
-Verify the next day:
+Don't wait until tomorrow to find out the keys are wrong — trigger it once by
+hand. Running early is safe: the scheduled 20:00 run will then see the day
+already collected and skip, so the source isn't hit twice.
 
 ```powershell
-Get-Content C:\LotClock\logs\scrape.log -Tail 5
+Start-ScheduledTask -TaskName "LotClock daily scrape (backup)"
+```
+
+Then watch the log:
+
+```powershell
+Get-Content E:\Portfolio\LotClock\logs\scrape.log -Tail 5
 ```
 
 Expect either `exit=0` after a real collection, or the line
 `today already collected by another host, skipping`. Both are healthy.
+
+A freshly registered task reports `LastTaskResult 267011` until its first run.
+That means "has not run yet", not a failure.
 
 ### What "done" looks like now
 

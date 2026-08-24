@@ -1,13 +1,16 @@
 # Registers the LotClock daily collection task.
 # Run in PowerShell AS ADMINISTRATOR (admin is needed only for -WakeToRun).
 #
+# Paths below are examples — the script resolves run_daily.cmd from its own
+# location ($PSScriptRoot), so it works from wherever the repo is cloned.
+#
 #   powershell -ExecutionPolicy Bypass -File E:\Portfolio\LotClock\install_task.ps1
 #
 # On a second machine, add -Backup. That host runs later in the day and skips
 # entirely if the primary already collected, so two collectors close the gaps
 # left by a machine being off without doubling the load on the source.
 #
-#   powershell -ExecutionPolicy Bypass -File C:\LotClock\install_task.ps1 -Backup
+#   powershell -ExecutionPolicy Bypass -File E:\Portfolio\LotClock\install_task.ps1 -Backup
 
 param(
     [switch]$Backup

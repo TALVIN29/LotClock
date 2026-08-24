@@ -111,7 +111,8 @@ and derived aggregates only.
 ```bash
 git clone https://github.com/TALVIN29/LotClock.git
 cd LotClock
-pip install -r requirements.txt      # pytest only — the scraper is stdlib-only
+pip install -r requirements.txt      # scrapling (parsing) + pytest/model extras
+                                     # fetching is still stdlib urllib
 
 python -m pytest tests -q            # 5 checks against a real saved page
 python -m scraper.run --dry-run --max 80    # live parse, no writes
