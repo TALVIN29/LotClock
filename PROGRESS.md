@@ -818,3 +818,35 @@ as such rather than published as a trend.
 
 Standing action: **refit `exit_rule.py` monthly.** This entry exists because a refit
 overturned a published number.
+
+## 2026-08-24 (later): N=10 was the same artifact as N=6, and the picker caused both
+
+The reframe above rests on the refit moving the exit threshold from N=5 to N=10.
+**N=10 is not evidence.** `exit_rule.py`'s own table shows why:
+
+```
+ N   reached   came back   return rate
+ 9        69          24       34.8%
+10        41           0        0.0%
+```
+
+The closed-gap histogram tops out at 9 observed days. Every absence of 10+ days in
+the data is still open, so the N>=10 denominator is pure trailing censoring and the
+0.0% is the window ending, not listings staying gone. That is exactly the reason the
+2026-08-08 fit rejected N=6 ("reads 0% but is window-limited") — and `choose_n()`
+walked into it again the moment the window grew, because it took the first row under
+5% without asking whether any return could have been observed there.
+
+Fixed in `choose_n()`: a row with zero observed returns can never be picked. Re-fit
+now reports **no N clears the 5% bar on evidence** — the return curve is 60.2% at 5
+days falling only to 34.8% at 9. Self-check updated to assert the zero-return row is
+rejected.
+
+This does not weaken the reframe, it removes the last number doing unearned work in
+it. "The exit event is not in the data" no longer depends on a threshold that was
+itself an artifact. `docs/teardown-02.md` section 2 rewritten to publish the trap
+rather than the number.
+
+Also pinned in the teardown's method: sections 3-4 were computed through observation
+day 2026-08-23, because the collector keeps moving them (the 08-24 run alone took
+cutters from 151 to 154).

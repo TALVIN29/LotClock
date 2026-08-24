@@ -40,10 +40,10 @@ With more data it is **60.2%**. The old threshold was not conservative, it was
 wrong — and it was wrong in the direction that flatters the project, because a
 loose exit rule manufactures exits and lets you publish a days-to-sell number.
 
-The refitted threshold is **10 observed days**. Under it, 295 apparent
-disappearances collapse to **41 real ones**.
+Refitting picked **10 observed days**, at an apparent 0.0% reversal. That number
+is not real either, and section 2 is where it falls apart.
 
-## 2. The refitted rule is longer than the window it has to live in
+## 2. Every rule that fits is either too loose or an artifact
 
 Here is where it stops being a data problem and starts being a structural one.
 
@@ -55,15 +55,31 @@ counts as gone. Those two numbers are almost the same number, and that is fatal:
 |---|---|---|
 | N = 3 (too loose) | 95 | 99.3% |
 | N = 5 (teardown-01's rule) | 48 | 99.6% |
-| **N = 10 (refitted, defensible)** | **1** | **100.0%** |
+| N = 10 (the refit's pick) | 1 | 100.0% |
 
-The honest rule yields **one** exit out of 13,172 listings. Not a small sample —
-no sample. Every rule that produces enough events to model with is a rule I have
-just shown to be wrong.
+The refit's own rule yields **one** exit out of 13,172 listings. Not a small
+sample — no sample.
 
-The 41 exits I quoted above come from pooling both coverage eras, which this
-project's own method notes forbid, for good reason. Inside the era where the
-measurement is actually clean, the count is 1.
+**And N = 10 is not defensible either.** It is the same artifact one rung up. The
+longest absence anywhere in the data that is observed to *close* is 9 observed
+days; past that, every remaining absence is still open, so it cannot come back
+inside the window:
+
+| Absent for | Reached it | Came back | Return rate |
+|---|---|---|---|
+| 8 days | 73 | 28 | 38.4% |
+| 9 days | 69 | 24 | 34.8% |
+| **10 days** | **41** | **0** | **0.0% — by construction** |
+
+The 0.0% is the window ending, not listings staying gone. Teardown-01's notes
+already caught this once and rejected N=6 for reading "0% but window-limited";
+the refit walked into it again at N=10. The real curve is 60.2% → 52.6% → 47.8%
+→ 38.4% → 34.8%, still falling gently where the data runs out. **No N clears the
+5% bar on evidence at all** — and `exit_rule.py` now refuses to pick one from a
+row with zero observed returns, so this cannot be published a third time.
+
+The 41 exits also pool both coverage eras, which this project's own method notes
+forbid. Inside the clean era the count is 1.
 
 ## 3. Price barely moves either, but be careful what you conclude
 
@@ -144,15 +160,25 @@ one. Concretely:
   days**, not 16 calendar days.
 - **Observed days, never calendar days.** A listing cannot be seen on a day
   nobody looked.
-- **Small event count is the whole point.** With 1 defensible exit, no median,
-  no curve and no model is estimable here. Nothing in this article should be
+- **Small event count is the whole point.** With no defensible exit rule at all —
+  and 1 exit even under the rule this article rejects — no median, no curve and
+  no model is estimable here. Nothing in this article should be
   read as an estimate of how long Malaysian used cars take to sell.
 - **Prices are asking prices.** Transaction prices are not public.
+- **Figures pinned to a window.** Sections 3 and 4 were computed through
+  observation day **2026-08-23**. The collector keeps running, so re-running
+  `price_moves.py --census` on a later date returns slightly different counts —
+  the 2026-08-24 run alone moved 151 cutters to 154. Quote the date with the
+  number.
+- **The exit-rule fit is bounded by its own window.** Return rates for absences
+  longer than the longest *closed* gap (9 observed days here) are not estimates;
+  the denominator is entirely still-open absences. Any row showing 0 returns is
+  the window ending. This is the trap that produced both N=6 and N=10.
 - **Teardown-01's 5-day exit rule is superseded.** Its price-move findings stand
   for its own era; its exit-rule section is now known to be too loose.
 
 ---
-*Numbers reproducible with `exit_rule.py` and `price_moves.py` against the
-project database; both self-check on synthetic data with `--test` and no
+*Numbers reproducible with `exit_rule.py` and `price_moves.py --census` against
+the project database; both self-check on synthetic data with `--test` and no
 network. Census-era figures use the observation-day filter from
 `kaggle_export.py`.*

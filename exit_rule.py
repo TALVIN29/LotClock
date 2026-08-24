@@ -104,9 +104,16 @@ def trailing_absences(presence: dict[str, set[str]], days: list[str]) -> dict[in
 
 
 def choose_n(rows, threshold: float = 0.05) -> int | None:
-    """Smallest N where fewer than `threshold` of absences that long ever reverse."""
-    for n, _reached, _returned, rate in rows:
-        if rate < threshold:
+    """Smallest N where fewer than `threshold` of absences that long ever reverse.
+
+    A row with zero returns is not evidence of zero return rate: past the longest
+    absence the window can observe closing, every remaining absence is trailing
+    censoring and CANNOT come back within the data. Such a row reads 0.0% by
+    construction, which is how N=6 (2026-08-08) and N=10 (2026-08-24) were both
+    picked and both wrong. Only rows with at least one observed return count.
+    """
+    for n, _reached, returned, rate in rows:
+        if returned and rate < threshold:
             return n
     return None
 
@@ -131,7 +138,10 @@ def main() -> int:
 
     n = choose_n(rows)
     if n is None:
-        print("\nNo N yet clears the 5% bar -- the series is too short. Collect more days.")
+        print()
+        print("No N clears the 5% bar on evidence. Rows past the longest observed")
+        print("closed gap read 0.0% only because nothing that far out CAN return")
+        print("yet -- that is censoring, not a threshold. The series is too short.")
     else:
         exits = sum(c for g, c in trailing.items() if g >= n)
         print(f"\nN = {n}: absent {n} observed days in a row reverses <5% of the time.")
@@ -154,7 +164,9 @@ def _test() -> int:
     assert rows[0] == (1, 3, 2, 2 / 3), rows[0]
     # N=3: two reach it (the long gap and the trailing one), one came back
     assert rows[2] == (3, 2, 1, 0.5), rows[2]
-    assert choose_n([(1, 10, 9, 0.9), (2, 10, 4, 0.4), (3, 10, 0, 0.0)]) == 3
+    # 0 returns is the window running out, not a clean rule -- must not be picked
+    assert choose_n([(1, 10, 9, 0.9), (2, 10, 4, 0.4), (3, 10, 0, 0.0)]) is None
+    assert choose_n([(1, 10, 9, 0.9), (2, 10, 4, 0.4), (3, 100, 1, 0.01)]) == 3
     assert choose_n([(1, 10, 9, 0.9)]) is None
     print("ok")
     return 0
