@@ -21,6 +21,36 @@ the last six runs killed mid-walk, cause unidentified.
 `LogonType Interactive`.** Fixed, and 08-22 re-collected to a full census. See the
 section directly below; that is where to start reading.
 
+## 2026-08-24 — the census era gets its own numbers, and they are not comparable
+
+`price_moves.py` only ever ran on the partial-harvest era; the census era — the regime
+everything from here on is modelled in — had no price numbers at all. It now takes
+`--census`, which selects days from `observed_days()`: census-era days that clear
+`COMPLETE_MIN` (10,000 rows), so the killed walks 08-11, 08-15 and 08-21 drop out
+automatically. Their absences are a coverage artefact and would read as exits.
+
+Both windows, same code, run 2026-08-24:
+
+| | partial era 07-19..08-08 | census era 08-09..08-24 |
+|---|---|---|
+| observed days | 16 | 11 |
+| listings | 2,315 | 13,181 |
+| cut rate | 6.56% | 1.17% |
+| median first cut | 2.07% / RM4,000 | 1.88% / RM5,000 |
+| observed days to first cut | 7.0 | 6.0 |
+| exits under N=5 | 68 | 47 |
+| censored | 97.1% | **99.6%** |
+
+**The two cut rates must not be read as a change in the market.** The partial era saw
+~2,000 listings repeatedly across 16 days; the census era sees 13,181 listings across
+11. A cut has fewer days to happen in and is spread over 5.7x more listings, most of
+them first seen days ago. Cut rate is a function of window length and coverage, not a
+market statistic — that is exactly why the two regimes stay unpooled. The cut *sizes*
+are the numbers that survive the comparison, and they agree: ~2% of asking price.
+
+**Censoring got worse, as expected.** 99.6% still open. Survival remains not estimable
+and the notebook must keep saying so.
+
 ## 2026-08-22 — the runs were never crashing, Windows was killing them
 
 Six days of "forced terminate" (`0xC000013A`) had no explanation because the evidence
@@ -486,8 +516,10 @@ Full walkthrough: `SETUP.md`
       Broke afterwards: 5 gap days in 21 (07-24, 08-01…03, 08-06), all one host being
       off. Re-gate as **7 consecutive days with two hosts live**
 - [x] ≥2,000 unique listings captured — 2,016 on day 0
-- [ ] **≥1 price change captured for the same `listing_id`** ← the real gate
-- [ ] ≥1 delisting captured
+- [x] **≥1 price change captured for the same `listing_id`** — 150 listings cut in the
+      partial era, 154 in the census era (`price_moves.py`, both windows)
+- [x] ≥1 delisting captured — 68 exits (partial era) and 47 (census era) under the
+      fitted N=5 rule
 - [ ] Dead-man's switch verified by deliberately breaking it — **armed**
       2026-07-19 (healthchecks.io, `HEALTHCHECK_URL` set, ping test-fired
       through `ping_healthcheck()` and returned 200). Still unverified: proving

@@ -16,8 +16,9 @@ Exit rule N comes from exit_rule.py, fitted on the same partial-harvest era.
 N = 5 is the defensible threshold (11.7% of 5-day absences still reversed);
 N = 6 reads 0% but is window-limited.
 
-    python price_moves.py          # fit against Supabase
-    python price_moves.py --test   # self-check on synthetic data, no network
+    python price_moves.py           # partial-harvest era (default window)
+    python price_moves.py --census  # census era only, killed walks dropped
+    python price_moves.py --test    # self-check on synthetic data, no network
 """
 from __future__ import annotations
 
@@ -31,6 +32,7 @@ from exit_rule import load_env
 
 CENSUS_FROM = "2026-08-09"   # first full-census day; window is everything before it
 EXIT_N = 5                   # observed days absent before a listing counts as gone
+COMPLETE_MIN = 10_000        # rows a census day must clear to count as observed
 
 
 def fetch_prices() -> dict[str, dict[str, float | None]]:
@@ -125,12 +127,27 @@ def dom(prices: dict[str, dict[str, float | None]], days: list[str], n: int = EX
     }
 
 
+def observed_days(prices: dict[str, dict[str, float | None]], census: bool) -> list[str]:
+    """Days to model on. Census era drops killed walks: a partial day's absences
+    are a coverage artefact and would read as exits."""
+    per_day: dict[str, int] = defaultdict(int)
+    for by_day in prices.values():
+        for d in by_day:
+            per_day[d] += 1
+    if not census:
+        return sorted(d for d in per_day if d < CENSUS_FROM)
+    return sorted(d for d, n in per_day.items() if d >= CENSUS_FROM and n >= COMPLETE_MIN)
+
+
 def main() -> int:
     load_env()
+    census = "--census" in sys.argv
     prices = fetch_prices()
-    days = sorted({d for by_day in prices.values() for d in by_day if d < CENSUS_FROM})
-    print(f"window: {days[0]} .. {days[-1]}  ({len(days)} observed days, "
-          f"partial-harvest regime only; {CENSUS_FROM} census excluded)")
+    days = observed_days(prices, census)
+    regime = (f"census era only, days under {COMPLETE_MIN:,} rows dropped as killed walks"
+              if census else
+              f"partial-harvest regime only; {CENSUS_FROM} census excluded")
+    print(f"window: {days[0]} .. {days[-1]}  ({len(days)} observed days, {regime})")
     print(f"listings seen in window: {sum(1 for b in prices.values() if any(d in days for d in b)):,}")
     for k, v in moves(prices, days).items():
         print(f"  {k}: {v}")
@@ -163,6 +180,19 @@ def _test() -> int:
     assert d["exited"] == 4, d
     assert d["censored"] == 1, d                    # steady runs to the end
     assert d["median_dom_obs_days_exited"] == 2, d  # spans 4,2,1,2 -> median 2
+    global COMPLETE_MIN
+    era = {
+        "a": {"2026-07-20": 1.0},   # partial era
+        "b": {"2026-08-09": 1.0},   # census day, 2 rows below
+        "c": {"2026-08-09": 1.0, "2026-08-11": 1.0},   # 08-11 has 1 row: killed walk
+    }
+    COMPLETE_MIN = 1
+    assert observed_days(era, census=False) == ["2026-07-20"]
+    assert observed_days(era, census=True) == ["2026-08-09", "2026-08-11"]
+    COMPLETE_MIN = 2
+    assert observed_days(era, census=True) == ["2026-08-09"], "thin day must drop"
+    COMPLETE_MIN = 10_000
+
     print("price_moves self-check ok")
     return 0
 
