@@ -41,15 +41,18 @@ Both windows, same code, run 2026-08-24:
 | exits under N=5 | 68 | 47 |
 | censored | 97.1% | **99.6%** |
 
-**The two cut rates must not be read as a change in the market.** The partial era saw
-~2,000 listings repeatedly across 16 days; the census era sees 13,181 listings across
-11. A cut has fewer days to happen in and is spread over 5.7x more listings, most of
-them first seen days ago. Cut rate is a function of window length and coverage, not a
-market statistic — that is exactly why the two regimes stay unpooled. The cut *sizes*
-are the numbers that survive the comparison, and they agree: ~2% of asking price.
+**The two cut rates must not be read as a change in the market.** Window length is part
+of it, but the sharper reason is survivorship: the partial harvest could only see a
+listing twice if it lived long enough to be caught twice, so it oversampled exactly the
+listings with time to cut. Sampling artefact, not a falling market. The cut *sizes* are
+what survive the comparison, and they agree: ~2% of asking price.
 
-**Censoring got worse, as expected.** 99.6% still open. Survival remains not estimable
-and the notebook must keep saying so.
+**Superseded the same day — read the reframe at the bottom of this file before quoting
+the exit numbers above.** The `exited` / `censored` rows here use N=5, and refitting
+`exit_rule.py` on all 30 observed days that afternoon measured a 60.2% reversal rate at
+5 days absent. N=5 is wrong; the defensible threshold is N=10, which the census era
+cannot carry (1 exit in 13,172). The price-cut rows stand — they never depended on the
+exit rule. The `--census` window itself stands too.
 
 ## 2026-08-22 — the runs were never crashing, Windows was killing them
 
@@ -518,8 +521,12 @@ Full walkthrough: `SETUP.md`
 - [x] ≥2,000 unique listings captured — 2,016 on day 0
 - [x] **≥1 price change captured for the same `listing_id`** — 150 listings cut in the
       partial era, 154 in the census era (`price_moves.py`, both windows)
-- [x] ≥1 delisting captured — 68 exits (partial era) and 47 (census era) under the
-      fitted N=5 rule
+- [ ] ≥1 delisting captured — **not met, and now known to be unmeetable as written.**
+      N=5 gave 68 / 47 exits, but the 30-day refit puts the reversal rate at 5 days
+      absent at 60.2%: those are mostly listings that came back. At the defensible
+      N=10 the census era yields 1 exit in 13,172. A *delisting* is observable; a
+      *sale* is not, and that is what this gate was really asking for. See the
+      reframe at the bottom of this file
 - [ ] Dead-man's switch verified by deliberately breaking it — **armed**
       2026-07-19 (healthchecks.io, `HEALTHCHECK_URL` set, ping test-fired
       through `ping_healthcheck()` and returned 200). Still unverified: proving
