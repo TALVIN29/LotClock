@@ -1,0 +1,9 @@
+# The Next app lives in web/ and is a static export (next.config.mjs: output "export"),
+# so Netlify just runs the build and serves the files. No Next runtime plugin.
+[build]
+  base = "web"
+  command = "npm run build"
+  publish = "out"
+
+[build.environment]
+  NODE_VERSION = "22"
