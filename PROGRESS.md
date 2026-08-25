@@ -879,3 +879,33 @@ Deployed same day: **https://lotclock.netlify.app** (Netlify, Git-based, auto-de
 on push to `main`). `netlify.toml` at repo root sets base `web`, publish `out`; no
 runtime plugin because the Next app is a static export. Verified live: home and
 `/price-model` both 200, chart renders.
+
+## 2026-08-25 (later): the Kaggle dataset was still shipping the retracted exit rule
+
+Went to refresh the dataset for two days of new data and found `kaggle_export.py`
+still computing `event_exited` from `EXIT_N = 5` — the threshold teardown-02
+retracted. The public dataset has been carrying a survival *event* column built on
+a rule where **60.2% of those absences come back**, with a data card telling people
+it was survival-ready. A blind refresh would have republished it with a longer
+window and more authority.
+
+Fixed before uploading:
+
+- Column renamed `event_exited` → **`absent_ge_5_obs_days`**. It is published as
+  what it literally is — not seen for N observed days — not as an exit, delisting
+  or sale. Breaking rename for anyone downstream, and the right call: the old name
+  asserted something the data cannot support.
+- `listings()` docstring no longer says "survival-ready"; it says the opposite and
+  points at the teardown.
+- Summary line prints "absences, NOT exits" with the 60.2% figure.
+- `DATA_CARD.md` and `dataset-metadata.json`: added an explicit **do not fit a
+  survival model on this dataset** instruction, and removed the old line implying
+  days-on-market becomes answerable as the window grows. It does not.
+- Self-check updated and passing.
+
+Published: 12 observation days through 2026-08-25, 13,185 listings (up from 11 and
+13,172). 41 listings absent >= 5 observed days — labelled as absences, not exits.
+
+Note the asymmetry this leaves: the site's numbers are pinned to 2026-08-23 and
+stay there, while the dataset moves. That is intended — the write-up quotes a
+window, the dataset is the window.

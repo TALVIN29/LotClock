@@ -87,7 +87,15 @@ def make_model(title: str | None) -> tuple[str | None, str | None]:
 
 
 def listings(rows: list[dict], days: list[str], n: int = EXIT_N) -> list[dict]:
-    """One row per listing observed in the census era, survival-ready."""
+    """One row per listing observed in the census era.
+
+    NOT survival-ready, and the absence column is deliberately not called an
+    event. Refitting the exit rule on the full window (see docs/teardown-02.md)
+    found that 60.2% of 5-day absences still come back, and that no threshold
+    clears a 5% bar on evidence. `absent_ge_5_obs_days` is therefore published
+    as what it literally is -- a listing was not seen for n observed days -- not
+    as an exit, a delisting, or a sale.
+    """
     index = {d: i for i, d in enumerate(days)}
     last_i = len(days) - 1
 
@@ -129,7 +137,7 @@ def listings(rows: list[dict], days: list[str], n: int = EXIT_N) -> list[dict]:
             # duration for survival analysis: observed days from first sighting
             # to last, inclusive. Observed, not calendar -- see the coverage CSV.
             "duration_obs_days": pos[-1] - pos[0] + 1,
-            "event_exited": int(exited),
+            "absent_ge_5_obs_days": int(exited),
             "listed_before_census": int(lid in pre_census),
         })
     return out
@@ -157,9 +165,9 @@ def main() -> int:
     write("lotclock_daily_coverage.csv", cov)
     ls = listings(rows, days)
     write("lotclock_listings.csv", ls)
-    ev = sum(r["event_exited"] for r in ls)
-    print(f"events (exited, N={EXIT_N} observed days absent): {ev:,} "
-          f"({ev / len(ls) * 100:.1f}%); censored {100 - ev / len(ls) * 100:.1f}%")
+    ev = sum(r["absent_ge_5_obs_days"] for r in ls)
+    print(f"absent >= {EXIT_N} observed days: {ev:,} ({ev / len(ls) * 100:.1f}%) "
+          f"-- absences, NOT exits: 60.2% of 5-day absences return")
     return 0
 
 
@@ -196,11 +204,11 @@ def _test() -> int:
     assert a["listed_before_census"] == 1, a
     assert a["observed_days_seen"] == 2 and a["duration_obs_days"] == 2, a
     assert a["price_cut_myr"] == 2000, a
-    assert a["event_exited"] == 1, a            # absent on the last observation day
+    assert a["absent_ge_5_obs_days"] == 1, a            # absent on the last observation day
     assert (a["make"], a["model"], a["year"]) == ("PERODUA", "MYVI", 2015), a
     b = by_id["b"]
     assert b["observed_days_seen"] == 1, b      # 08-11 dropped, only 08-12 counts
-    assert b["event_exited"] == 0, b            # seen on the final day: censored
+    assert b["absent_ge_5_obs_days"] == 0, b            # seen on the final day: censored
     assert b["listed_before_census"] == 0, b
     print("kaggle_export self-check ok")
     return 0

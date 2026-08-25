@@ -37,18 +37,24 @@ One row per listing observed on a full-census **observation day**.
 | `price_cut_myr` | first minus last, 0 if never cut |
 | `observed_days_seen` | number of observation days the listing appeared on |
 | `duration_obs_days` | first-to-last sighting, inclusive, in **observed** days |
-| `event_exited` | 1 if absent for 5 consecutive observation days |
+| `absent_ge_5_obs_days` | 1 if not seen for 5 consecutive observation days. **An absence, not an exit** — renamed from `event_exited` in the 2026-08-25 version, see below |
 | `listed_before_census` | 1 if already present in the partial era (left-truncated) |
 
 ## How to use it honestly
 
 - **Do not pool the coverage eras.** Pre-2026-08-09 harvested ~15% of the site.
 - **Duration is in observed days, not calendar days.** Collection has gaps.
-- **`event_exited` is not "sold".** A delisting can be a sale, an expiry, or a
-  seller giving up. No sale price is ever visible.
-- **Right-censoring is severe today** — 99.9% at the current window length, so the
-  median days-on-market is *not* estimable yet. Reporting the median of observed
-  exits is survivorship bias. See the starter notebook.
+- **`absent_ge_5_obs_days` is not an event, and not "sold".** This column was
+  called `event_exited` in earlier versions and that name was wrong. Refitting
+  the exit rule on the full window found that **60.2% of 5-day absences still
+  come back**, and that no absence threshold clears a 5% reversal bar on the
+  evidence available. Treat this column as "was not seen for a while" and
+  nothing more.
+- **Do not fit a survival model on this dataset.** The exit event is not in the
+  data: listing removal is dominated by expiries, relists and crawl misses, with
+  sales unlabelled inside it. More collection days do not separate them — this
+  is a structural limit, not a sample-size problem. Full argument:
+  <https://lotclock.netlify.app>
 - **Coverage is not perfectly stable even within the census era**: 81% of
   single-day absences reverse the next day (the site reorders under the crawl).
   That is why the exit threshold is 5 days, not 1.
