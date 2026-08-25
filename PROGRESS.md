@@ -874,3 +874,8 @@ both pages in a browser.
 
 Not done: no chart for the price-move numbers (a 4-row table says it better), and
 no deploy — Vercel/Netlify hookup is still open.
+
+Deployed same day: **https://lotclock.netlify.app** (Netlify, Git-based, auto-deploys
+on push to `main`). `netlify.toml` at repo root sets base `web`, publish `out`; no
+runtime plugin because the Next app is a static export. Verified live: home and
+`/price-model` both 200, chart renders.
