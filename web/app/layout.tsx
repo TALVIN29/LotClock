@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "What Drives a Used Car's Price?",
+  title: "LotClock — the listings will not tell you how long a car takes to sell",
   description:
-    "A gradient-boosted model trained on 7,900 real used-car listings, running entirely in your browser. No server, no LLM.",
+    "Five weeks of daily Malaysian used-car listing snapshots, and why days-to-sell is not in the data.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

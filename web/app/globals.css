@@ -70,3 +70,13 @@ select {
 footer { padding: 40px 0 60px; color: var(--muted); font-size: 0.9rem; }
 a { color: var(--accent); }
 code { background: var(--accent-soft); padding: 1px 6px; border-radius: 6px; font-size: 0.85em; }
+
+@media (min-width: 640px) { .grid.cols-2 { grid-template-columns: repeat(2, 1fr); } }
+.table-box table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+.table-box th, .table-box td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--border); }
+.table-box th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.table-box tr:last-child td { border-bottom: none; }
+.table-box td:last-child { text-align: right; }
+ul { color: var(--muted); padding-left: 20px; }
+li { margin: 8px 0; }
+li strong { color: var(--text); }

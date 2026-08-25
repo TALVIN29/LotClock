@@ -850,3 +850,27 @@ rather than the number.
 Also pinned in the teardown's method: sections 3-4 were computed through observation
 day 2026-08-23, because the collector keeps moving them (the 08-24 run alone took
 cutters from 151 to 154).
+
+## 2026-08-25: the teardown gets a public face
+
+The site under `web/` was still the old India price-model demo — wrong country,
+wrong question, and the only public artifact besides the Kaggle dataset. Rebuilt
+the home page as teardown-02: the censoring wall published as the finding, with
+the return-rate curve as the one chart that earns its place.
+
+- `app/page.tsx` — the write-up, static, no client fetch. Numbers hardcoded and
+  pinned to observation day 2026-08-23, with that date stated on the page, because
+  the collector keeps moving them.
+- `components/ReturnCurve.tsx` — return rate vs days absent, 1..9 days. **Day 10 is
+  deliberately absent from the chart**, same reason `exit_rule.py` now refuses it:
+  its denominator is entirely still-open absences. Plotting a 0% there would
+  republish the artifact in picture form.
+- The old price-model demo moved to `/price-model` rather than deleted; its fetches
+  changed from `./` to `/` for the new route depth. Linked from the footer as
+  earlier work.
+
+Verified: `next build` exports 3 static routes, served the export locally and read
+both pages in a browser.
+
+Not done: no chart for the price-move numbers (a 4-row table says it better), and
+no deploy — Vercel/Netlify hookup is still open.
