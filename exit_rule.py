@@ -9,8 +9,10 @@ This fits the threshold from the data instead of guessing it: measure how long
 absences actually last, and pick the smallest N where "absent N observed days in
 a row" almost never reverses.
 
-Gaps are counted in OBSERVED days, not calendar days -- collection has holes
-(07-24, 08-01..03, 08-06), and a listing cannot be seen on a day nobody looked.
+Gaps are counted in OBSERVED days, not calendar days -- collection has holes,
+and a listing cannot be seen on a day nobody looked. The authoritative list of
+holes is `docs/collection-gaps.md`; regenerate it with `collection_gaps.py`
+rather than keeping a copy here that goes stale.
 
     python exit_rule.py          # fit against Supabase
     python exit_rule.py --test   # self-check on synthetic data, no network
