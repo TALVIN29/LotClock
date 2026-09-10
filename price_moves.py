@@ -37,23 +37,13 @@ COMPLETE_MIN = 10_000        # rows a census day must clear to count as observed
 
 def fetch_prices() -> dict[str, dict[str, float | None]]:
     """{listing_id: {date: price_myr}} for every snapshot row. Read-only."""
-    from scraper.store import _cfg
+    from scraper.store import iter_snapshots
 
-    url, key = _cfg()
     seen: dict[str, dict[str, float | None]] = defaultdict(dict)
-    offset, PAGE = 0, 1000
-    while True:
-        req = urllib.request.Request(
-            f"{url}/rest/v1/listing_snapshot?select=listing_id,scraped_at,price_myr"
-            f"&order=id.asc&limit={PAGE}&offset={offset}",
-            headers={"apikey": key, "Authorization": f"Bearer {key}"})
-        batch = json.loads(urllib.request.urlopen(req, timeout=60).read())
-        for r in batch:
-            p = r["price_myr"]
-            seen[r["listing_id"]][r["scraped_at"]] = float(p) if p is not None else None
-        if len(batch) < PAGE:
-            return dict(seen)
-        offset += PAGE
+    for r in iter_snapshots("listing_id,scraped_at,price_myr"):
+        p = r["price_myr"]
+        seen[r["listing_id"]][r["scraped_at"]] = float(p) if p is not None else None
+    return dict(seen)
 
 
 def moves(prices: dict[str, dict[str, float | None]], days: list[str]) -> dict:

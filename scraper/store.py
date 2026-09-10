@@ -146,3 +146,34 @@ def log_run(source: str, rows_ok: int, rows_failed: int, status: str) -> None:
         "rows_failed": rows_failed,
         "status": status,
     }])
+
+
+def iter_snapshots(select: str, page: int = 1000):
+    """Yield every listing_snapshot row, keyset-paged on the primary key.
+
+    Read-only. Callers pass the columns they need; `id` is appended because the
+    cursor rides on it.
+
+    Keyset, not OFFSET. `offset=N` makes Postgres walk and discard N rows before
+    returning anything, so a full read of the table costs O(rows^2 / page) row
+    visits -- ~47M for 300k rows across three scripts that each do a full read.
+    That is what drained the project's Disk IO budget (Supabase warning,
+    2026-09-10) and what finally made the last page 500 on a statement timeout.
+    `id=gt.<last>` seeks the index instead: one walk, O(rows).
+    """
+    url, key = _cfg()
+    # Substring tests are wrong here: "listing_id" ends in "id".
+    cols = select if "id" in select.split(",") else f"id,{select}"
+    last = 0
+    while True:
+        req = urllib.request.Request(
+            f"{url}/rest/v1/listing_snapshot?select={cols}"
+            f"&id=gt.{last}&order=id.asc&limit={page}",
+            headers={"apikey": key, "Authorization": f"Bearer {key}"})
+        batch = json.loads(urllib.request.urlopen(req, timeout=60).read())
+        if not batch:
+            return
+        yield from batch
+        if len(batch) < page:
+            return
+        last = batch[-1]["id"]

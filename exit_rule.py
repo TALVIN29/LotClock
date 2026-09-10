@@ -38,22 +38,12 @@ def load_env(path: str = ".env") -> None:
 
 def fetch_presence() -> dict[str, set[str]]:
     """{listing_id: {date, ...}} for every snapshot row. Read-only."""
-    from scraper.store import _cfg
+    from scraper.store import iter_snapshots
 
-    url, key = _cfg()
     seen: dict[str, set[str]] = defaultdict(set)
-    offset, PAGE = 0, 1000
-    while True:
-        req = urllib.request.Request(
-            f"{url}/rest/v1/listing_snapshot?select=listing_id,scraped_at"
-            f"&order=id.asc&limit={PAGE}&offset={offset}",
-            headers={"apikey": key, "Authorization": f"Bearer {key}"})
-        batch = json.loads(urllib.request.urlopen(req, timeout=60).read())
-        for r in batch:
-            seen[r["listing_id"]].add(r["scraped_at"])
-        if len(batch) < PAGE:
-            return seen
-        offset += PAGE
+    for r in iter_snapshots("listing_id,scraped_at"):
+        seen[r["listing_id"]].add(r["scraped_at"])
+    return seen
 
 
 def gap_lengths(presence: dict[str, set[str]], days: list[str]) -> dict[int, int]:

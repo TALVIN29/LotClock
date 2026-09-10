@@ -40,21 +40,9 @@ COMPLETE_MIN = 10_000
 
 def fetch_rows() -> list[dict]:
     """Every snapshot row, read-only, paged."""
-    from scraper.store import _cfg
+    from scraper.store import iter_snapshots
 
-    url, key = _cfg()
-    out: list[dict] = []
-    offset, PAGE = 0, 1000
-    while True:
-        req = urllib.request.Request(
-            f"{url}/rest/v1/listing_snapshot?select=listing_id,scraped_at,price_myr,title,raw"
-            f"&order=id.asc&limit={PAGE}&offset={offset}",
-            headers={"apikey": key, "Authorization": f"Bearer {key}"})
-        batch = json.loads(urllib.request.urlopen(req, timeout=60).read())
-        out.extend(batch)
-        if len(batch) < PAGE:
-            return out
-        offset += PAGE
+    return list(iter_snapshots("listing_id,scraped_at,price_myr,title,raw"))
 
 
 def coverage(rows: list[dict]) -> list[dict]:
