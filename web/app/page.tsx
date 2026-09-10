@@ -1,4 +1,4 @@
-import ReturnCurve from "@/components/ReturnCurve";
+import ChannelRatio from "@/components/ChannelRatio";
 
 export default function Home() {
   return (
@@ -6,152 +6,176 @@ export default function Home() {
       <div className="wrap">
         {/* HERO */}
         <section style={{ borderTop: "none" }}>
-          <div className="eyebrow">LotClock · Malaysian used cars</div>
-          <h1>The listings will not tell you how long a car takes to sell</h1>
+          <div className="eyebrow">LotClock · Malaysian used cars · teardown 03</div>
+          <h1>I spent two months measuring a market I had not identified</h1>
           <p className="lead">
-            I scraped every used-car listing on motortrader.com.my once a day for five
-            weeks to measure liquidity — days-to-sell, price cuts. The days-to-sell
-            number is not in the data, and more data made that worse, not better. This
-            is the write-up of why.
+            The last teardown established that listing data cannot say when a car sold.
+            This one is about a question I never thought to ask: whose cars are these?
+            Malaysia publishes every car registration in the country, free. Put the two
+            side by side and the site I have been scraping turns out not to be the
+            Malaysian used-car market at all.
           </p>
           <div className="grid cols-3" style={{ marginTop: 24 }}>
             <div className="card metric">
-              <span className="big">13,172</span>
-              <span className="label">listings, census era</span>
+              <span className="big">62.6%</span>
+              <span className="label">of registrations are Perodua or Proton</span>
             </div>
             <div className="card metric">
-              <span className="big">11</span>
-              <span className="label">observation days that count</span>
+              <span className="big">4.9%</span>
+              <span className="label">of the lot is Perodua or Proton</span>
             </div>
             <div className="card metric">
-              <span className="big">100.0%</span>
-              <span className="label">censored under the fitted exit rule</span>
+              <span className="big">2,919×</span>
+              <span className="label">spread between the most and least over-represented make</span>
             </div>
           </div>
           <p className="caption">
-            Data 2026-07-19 to 2026-08-24. Figures below are pinned to observation day
-            2026-08-23 — the collector keeps running, so quote the date with the number.
+            13,324 listings (census era, all model years) against 566,616 JPJ first
+            registrations, 2026-01-01 to 2026-08-31. Figures pinned to 2026-09-11 —
+            both sources keep moving, so quote the date with the number.
           </p>
         </section>
 
         {/* 1 */}
         <section>
-          <h2>1. More data made the exit signal weaker</h2>
+          <h2>1. Two months in, I had a numerator and no denominator</h2>
           <p>
-            A listing vanishing does not mean the car sold. It might have sold, the ad
-            might have expired, the crawl might have missed it. The first teardown
-            handled that with a rule: a listing is gone once it has been absent for N
-            consecutive observed days, N chosen so absences that long almost never
-            reverse. On three weeks of data N came out at <strong>5 days</strong>, at an
-            estimated 11.7% reversal rate.
+            Every number this project produced was a count of listings. 4,166 Toyotas on
+            the lot. 1,724 Mercedes. Those are real counts, and on their own they mean
+            nothing — busy and stuck look identical from inside the shop window. To read
+            a supply figure you need to know what demand looks like, and I had no source
+            for it, so I never wrote the comparison down.
           </p>
           <p>
-            Refit on everything I now have, the 5-day reversal rate is{" "}
-            <strong>60.2%</strong>. The old threshold was not conservative, it was wrong
-            — and wrong in the direction that flatters the project, because a loose exit
-            rule manufactures exits and lets you publish a days-to-sell number.
+            It turns out JPJ has published it the whole time.{" "}
+            <a href="https://data.gov.my/data-catalogue/registration_transactions_car">
+              Car registration transactions
+            </a>{" "}
+            on data.gov.my: every car registered in Malaysia, CC BY 4.0, monthly, 566,616
+            rows so far in 2026. No scraping, no permission, no robots.txt to honour. A
+            32 MB CSV I should have looked for in July.
           </p>
-          <div className="card chart-box">
-            <ReturnCurve />
-            <p className="caption">
-              Share of absences of a given length that still came back. The shaded band is
-              the 5% bar an exit rule has to clear. The curve never reaches it.
-            </p>
-          </div>
+          <p>
+            The join is a CSV merge on manufacturer name. It reaches{" "}
+            <strong>99.7% of listings</strong> once five title-truncations are aliased
+            (<code>LAND</code> → <code>LAND ROVER</code> and four friends). That is the
+            entire technical content of this teardown. The finding is what fell out.
+          </p>
         </section>
 
         {/* 2 */}
         <section>
-          <h2>2. Every rule that fits is either too loose or an artifact</h2>
+          <h2>2. The lot is stocked upside down</h2>
+          <div className="card chart-box">
+            <ChannelRatio />
+            <p className="caption">
+              Listings per 1,000 first registrations, by make. Log scale — the spread is
+              2,919×, and on a linear axis every national make collapses to a stub.
+              Orange is Perodua and Proton.
+            </p>
+          </div>
           <p>
-            The census era — the only era where I see the whole site — is 11 observation
-            days. The refit picked a 10-day absence rule. Those are nearly the same
-            number, and that is fatal:
+            Perodua is the best-selling make in the country by a wide margin — 219,559
+            registrations — and appears <strong>300 times</strong> on the lot. Bentley
+            registered 23 cars nationwide all year and appears <strong>94 times</strong>.
+            Ninety-four Bentleys for sale, against twenty-three Bentleys entering the
+            country.
           </p>
           <div className="card table-box">
             <table>
               <thead>
-                <tr><th>Exit rule</th><th>Exited</th><th>Censored</th></tr>
+                <tr><th>Group</th><th>Share of registrations</th><th>Share of the lot</th></tr>
               </thead>
               <tbody>
-                <tr><td>N = 3 (too loose)</td><td>95</td><td>99.3%</td></tr>
-                <tr><td>N = 5 (teardown-01&apos;s rule)</td><td>48</td><td>99.6%</td></tr>
-                <tr><td>N = 10 (the refit&apos;s pick)</td><td>1</td><td>100.0%</td></tr>
+                <tr><td>Perodua + Proton</td><td>62.6%</td><td>4.9%</td></tr>
+                <tr><td>Exotics (Bentley, Ferrari, Lamborghini, Porsche, …)</td><td>0.41%</td><td>13.4%</td></tr>
+                <tr><td>Chinese &amp; EV entrants (Chery, BYD, Jetour, …)</td><td>7.5%</td><td>0.36%</td></tr>
               </tbody>
             </table>
           </div>
-          <p>One exit out of 13,172 listings. Not a small sample — no sample.</p>
           <p>
-            <strong>And N = 10 is not defensible either.</strong> The longest absence
-            anywhere in the data observed to <em>close</em> is 9 days; past that every
-            remaining absence is still open, so it cannot come back inside the window. Its
-            0.0% is the window ending, not listings staying gone — the same trap that
-            produced N = 6 a month earlier. <code>exit_rule.py</code> now refuses to pick a
-            threshold from a row with zero observed returns, so it cannot be published a
-            third time.
+            Two thirds of the market is 5% of the inventory. Four tenths of one percent
+            of the market is an eighth of it. Whatever motortrader is, it is not a
+            cross-section of Malaysian car ownership.
           </p>
         </section>
 
         {/* 3 */}
         <section>
-          <h2>3. Price barely moves — but be careful what you conclude</h2>
-          <div className="card table-box">
-            <table>
-              <tbody>
-                <tr><td>Cut their price</td><td><strong>151 (1.15%)</strong></td></tr>
-                <tr><td>Raised their price</td><td>7</td></tr>
-                <tr><td>Median first cut</td><td><strong>RM 5,000 (1.88%)</strong></td></tr>
-                <tr><td>Median observed days to first cut</td><td>6</td></tr>
-              </tbody>
-            </table>
-            <p className="caption">
-              Census era, 13,108 listings seen on more than one day.
-            </p>
+          <h2>3. What this ratio is not</h2>
+          <p>
+            This is the part I would have skipped a month ago, and the previous teardown
+            is the reason I did not.
+          </p>
+          <div className="grid cols-2">
+            <div className="card">
+              <span className="tag">Stock vs flow</span>
+              <p>
+                Listings are cars standing for sale <em>now</em>, of every model year.
+                Registrations are cars entering the road <em>during 2026</em>. A 2015
+                Toyota on the lot was registered in 2015 and is nowhere in the
+                denominator. The two are not the same units.
+              </p>
+            </div>
+            <div className="card">
+              <span className="tag">Not turnover</span>
+              <p>
+                Nothing here is a sell-through rate, a days-to-sell, or a liquidity
+                measure. Teardown-02 still stands: listing data cannot see when a car
+                sold, and adding a second dataset does not change that.
+              </p>
+            </div>
           </div>
           <p>
-            Teardown-01 reported a 6.6% cut rate; this says 1.15%.{" "}
-            <strong>That is a sampling artifact, not sellers turning stubborn.</strong> The
-            old 15% partial harvest could only show me a listing twice if it hung around
-            long enough to be caught twice, so it oversampled long-lived listings — exactly
-            the ones with time to cut.
+            <strong>And I had to check what a &ldquo;registration transaction&rdquo;
+            counts.</strong> The catalogue description is ambiguous about whether
+            ownership transfers are included — which matters enormously, because
+            transfers would make this a used-car denominator instead of a new-car one.
+            Rather than trust the blurb I tested it: Naza, Saab, Opel and Rover all show{" "}
+            <strong>zero</strong> 2026 rows, and there are plenty of those still on
+            Malaysian roads changing hands. Chevrolet shows 15. Meanwhile Chery shows
+            21,206. The dataset is first registrations, and the annualised volume
+            (~850,000) matches national new-vehicle sales rather than the millions of
+            ownership transfers.
           </p>
           <p>
-            The claim that survives both eras: <strong>the sticker price is close to
-            inert.</strong> Roughly 20 cutters per raiser, about 2% off, arriving in week
-            one. Whatever negotiation happens in this market does not happen on the
-            listing.
+            So the honest reading is narrow: <strong>this is a channel-composition
+            comparison.</strong> The mix of makes on the lot versus the mix of makes
+            entering the country. It cannot tell you how fast anything sells. It can tell
+            you, decisively, that the two mixes are not drawn from the same population —
+            and that is the claim I have been implicitly making wrong for two months.
           </p>
         </section>
 
         {/* 4 */}
         <section>
-          <h2>4. What is actually broken</h2>
+          <h2>4. The blind spot this exposes</h2>
           <p>
-            The premise was that daily snapshots make liquidity observable. Half of that is
-            wrong, and it is worth being precise about which half.
+            Malaysia&apos;s new-car market is in the middle of a visible shift. Chinese
+            marques and EVs were <strong>7.5% of 2026 registrations</strong> — Chery
+            alone 21,206, Jetour 7,503, BYD 7,472. Electric is 8.4% of all registrations
+            by fuel type.
           </p>
-          <div className="grid cols-2">
-            <div className="card">
-              <span className="tag">Listings do measure</span>
-              <p>
-                Inventory, asking prices, price-change behaviour, how long an <em>ad</em>{" "}
-                stays up. All real, all unpublished for this market.
-              </p>
-            </div>
-            <div className="card">
-              <span className="tag">Listings cannot measure</span>
-              <p>
-                When a car sold. What I observe is listing <em>removal</em>, dominated by
-                expiries, relists and crawl misses, with sales somewhere inside it,
-                unlabelled.
-              </p>
-            </div>
+          <div className="card table-box">
+            <table>
+              <thead>
+                <tr><th>Make</th><th>2026 registrations</th><th>On the lot</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Chery</td><td>21,206</td><td>16</td></tr>
+                <tr><td>Jetour</td><td>7,503</td><td>0</td></tr>
+                <tr><td>BYD</td><td>7,472</td><td>5</td></tr>
+                <tr><td>Tesla</td><td>3,733</td><td>5</td></tr>
+                <tr><td>Leapmotor</td><td>1,512</td><td>0</td></tr>
+              </tbody>
+            </table>
           </div>
           <p>
-            No amount of extra calendar time separates them — time adds more of the same
-            ambiguous signal. Extrapolated, a 50%-uncensored sample lands around{" "}
-            <strong>April 2027</strong>, and would still be half housekeeping. Waiting was
-            the wrong plan.
+            Forty-eight listings in total, 0.36% of the lot, against 7.5% of the
+            country&apos;s registrations. Partly that is age — these cars are too new to
+            resell in volume yet. But it means any trend I might have claimed to observe
+            about &ldquo;the Malaysian used-car market&rdquo; would have been blind to the
+            single largest thing happening in it.
           </p>
         </section>
 
@@ -160,24 +184,28 @@ export default function Home() {
           <h2>5. What this changes</h2>
           <ul>
             <li>
-              <strong>The survival model is deferred, not cancelled.</strong> It needs a
-              labelled exit event, not a longer window. Built on listing-removal it would
-              produce a confident curve describing ad expiry policy.
+              <strong>The scope claim gets rewritten everywhere.</strong> Not
+              &ldquo;Malaysian used-car liquidity&rdquo;. This is a Klang Valley premium
+              and recond import channel — which also explains why 52.5% of the rows are
+              RECOND and why Kuala Lumpur and Selangor are 98.6% of them. Narrower, and
+              for the first time provable against an external source.
             </li>
             <li>
-              <strong>The product is retargeted</strong> at what the data supports —
-              inventory, asking-price behaviour, time-on-site for the ad — each named as
-              what it is, never as &ldquo;days to sell&rdquo;.
+              <strong>A public dataset beat two months of scraping.</strong> The scraper
+              was necessary — nobody publishes what sits on the lot. But the single most
+              informative number in this project came from a CSV download, and I did not
+              go looking for it because I had framed the problem as a collection problem.
             </li>
             <li>
-              <strong>The collector keeps running.</strong> It costs nothing, the dataset is
-              the asset, and the exit rule is refit monthly. This article exists because a
-              refit overturned a published number.
+              <strong>Segment before fitting anything.</strong> Recond imports and
+              owner-sold used cars are two populations sharing one table. A survival curve
+              over the pool would describe neither, and the make mix is now the evidence
+              for that rather than a hunch.
             </li>
             <li>
-              <strong>The unlock is a labelled exit</strong> — a sold badge or status field
-              on the detail page. Different scrape surface, its own privacy obligations. A
-              decision, not a formality.
+              <strong>The collector keeps running.</strong> Unchanged. The dataset is
+              still the asset, and this teardown exists because a free CSV overturned the
+              framing of everything built on top of it.
             </li>
           </ul>
         </section>
@@ -187,54 +215,60 @@ export default function Home() {
           <h2>Method, and everything wrong with it</h2>
           <ul>
             <li>
-              <strong>Source.</strong> Public listing pages on motortrader.com.my, one pass
-              per day. robots.txt sets <code>Crawl-delay: 5</code> with an empty Disallow; I
-              honour the 5 seconds and identify the crawler with a contact URL. No proxy
-              rotation, no evasion. mudah.my, carbase and wapcar are excluded — their terms
-              or signals don&apos;t permit this.
+              <strong>Sources.</strong> Listings: public listing pages on
+              motortrader.com.my, one pass per day, <code>Crawl-delay: 5</code> honoured,
+              crawler identified with a contact URL, no proxy rotation or evasion.
+              Registrations: <code>registration_transactions_car</code> on data.gov.my,
+              CC BY 4.0.
             </li>
             <li>
-              <strong>Append-only.</strong> A price change is a new dated row, never an
-              update.
+              <strong>No state join.</strong> 87.5% of JPJ rows carry state{" "}
+              <code>Rakan Niaga</code> — the trade partner&apos;s registration point, not
+              where the car went. Joining on it would look correct and mean nothing, so
+              geography is left out of the comparison entirely.
             </li>
             <li>
-              <strong>Eras are not pooled.</strong> Every day to 2026-08-08 is a ~15% partial
-              harvest; 2026-08-09 onward is a full census. All figures above are census era.
+              <strong>No model-level matching.</strong> Exact model strings would cover
+              76.4% of listings, and a similarity threshold invented here is a knob I
+              could not defend. Make-level only; the model-level rate is printed, not
+              patched.
             </li>
             <li>
-              <strong>Killed walks are excluded.</strong> Three census runs were killed
-              mid-crawl and would fake a mass disappearance. A day counts only if it cleared
-              10,000 rows — leaving 11 observation days, not 16 calendar days.
+              <strong>Makes under 20 listings are omitted from the chart.</strong> Below
+              that the ratio swings on single cars. Six makes never matched at all — two
+              are title-parse noise (<code>2024</code>, <code>TQ</code>), and Haval
+              genuinely registered zero cars in 2026.
             </li>
             <li>
-              <strong>Observed days, never calendar days.</strong> A listing cannot be seen
-              on a day nobody looked.
+              <strong>The windows do not align and are not made to.</strong> JPJ covers
+              2026-01-01 to 2026-08-31 and lags a month; the census era starts 2026-08-09.
+              This compares shape across makes, never a rate per unit time.
             </li>
             <li>
-              <strong>The small event count is the point.</strong> With no defensible exit
-              rule, no median, no curve and no model is estimable here. Nothing above should
-              be read as an estimate of how long Malaysian used cars take to sell.
+              <strong>Recond units register too.</strong> An imported used Bentley is a
+              first registration in Malaysia, so it does appear in the denominator. The
+              ratio is not measuring &ldquo;new versus used&rdquo;; it is measuring which
+              makes this channel carries relative to the whole country.
             </li>
             <li>
-              <strong>Prices are asking prices.</strong> Transaction prices are not public.
-            </li>
-            <li>
-              <strong>The exit-rule fit is bounded by its own window.</strong> Any row
-              showing 0 returns is the window ending, not evidence.
+              <strong>Everything in teardown-02 still applies.</strong> No exit rule, no
+              days-to-sell, no survival model. Nothing here should be read as an estimate
+              of how long a Malaysian used car takes to sell.
             </li>
           </ul>
         </section>
 
         <footer>
           <p>
-            Numbers reproducible with <code>exit_rule.py</code> and{" "}
-            <code>price_moves.py --census</code>; both self-check on synthetic data with{" "}
-            <code>--test</code> and no network.{" "}
+            Numbers reproducible with <code>jpj_join.py</code>; it self-checks on
+            synthetic data with <code>--test</code> and no network, and caches the JPJ CSV
+            after one download.{" "}
             <a href="https://github.com/TALVIN29/LotClock">Code on GitHub</a> ·{" "}
             <a href="https://www.kaggle.com/datasets/talvinlee/malaysian-used-car-listings-daily-snapshots">
               Daily snapshots on Kaggle
             </a>{" "}
-            · <a href="/price-model">Earlier price-model demo</a>
+            · <a href="/teardown-02">Teardown 02: the censoring wall</a> ·{" "}
+            <a href="/price-model">Earlier price-model demo</a>
           </p>
         </footer>
       </div>
