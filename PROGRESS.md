@@ -909,3 +909,59 @@ Published: 12 observation days through 2026-08-25, 13,185 listings (up from 11 a
 Note the asymmetry this leaves: the site's numbers are pinned to 2026-08-23 and
 stay there, while the dataset moves. That is intended — the write-up quotes a
 window, the dataset is the window.
+
+## 2026-09-11 — a denominator, and a column that was lying
+
+Two things landed on the same day, both about the same weakness: LotClock could
+describe the lot but not the market.
+
+**The `transmission` column was a constant plus a hole.** Across 12,595 rows on
+2026-09-10 it held `AUTO` 12,035 times and null 560 times, and `MANUAL` never
+once — though `parse.py` has always accepted it. Motortrader prints an AUTO badge
+and prints nothing otherwise, so the field was never a gearbox label. Published as
+`transmission` it invited the one routine operation that destroys it: filling the
+nulls with the mode, stamping AUTO onto every non-automatic car in the set.
+
+Now exported as **`is_automatic`** (1/0, no null state — nothing left to impute).
+Absence leans manual without proving it: 19.3% of null-badge rows say MANUAL / MT /
+x-SPEED in their own title against 1.65% of AUTO-badged rows, a 12x lift, but their
+other fields are sparser too (mileage present 81.6% vs 99.3%), so some absences are
+thin cards rather than manual cars. The data card says exactly that, and now also
+says this is a Klang Valley dataset (KL 67.0%, Selangor 31.6%, nine states total)
+carrying two populations (RECOND 52.5%, USED 46.1%) that should not share one
+survival curve. Same failure family as the censoring wall: an absence read as an
+observation.
+
+**`jpj_join.py` adds the missing half, without scraping anything.** JPJ publishes
+every car registration in Malaysia — CC BY 4.0, monthly, 566,617 rows YTD — at
+data.gov.my. Listings measure supply standing still; registrations measure what
+actually moves. The join is a CSV merge on make and reaches 99.7% of listings once
+five title-truncations are aliased (`LAND` → `LAND ROVER` and friends).
+
+The first result is the honest reframing of the whole project:
+
+    make            listings    regs   per 1k reg
+    BENTLEY               94      23       4087.0
+    PORSCHE              897   1,397        642.1
+    MERCEDES BENZ      1,724   4,979        346.3
+    TOYOTA             4,166  72,942         57.1
+    PROTON               359 135,169          2.7
+    PERODUA              300 219,559          1.4
+
+Perodua is the country's best-selling make and is 300 listings. Bentley is 94
+listings against 23 registrations nationwide. Motortrader is not the Malaysian
+used-car market — it is a Klang Valley premium and recond import channel, which is
+also why RECOND is 52.5% of rows. The claim narrows and becomes provable, which is
+the better trade.
+
+Deliberately not done: no state join (87.5% of JPJ rows carry state `Rakan Niaga`,
+the dealer's paperwork point, not a destination — it would look fine and mean
+nothing), and no model-level fuzzy matching (exact model strings would cover 76.4%;
+a similarity threshold invented here is a knob nobody can defend). Both are
+measured and printed rather than patched.
+
+Also fixed the same day: three scripts each read the whole snapshot table with
+OFFSET paging, costing O(rows²/page) row visits — ~47M at 306k rows, growing
+quadratically per collection day. That drained the project's Supabase Disk IO
+budget and finally 500'd `kaggle_export.py` mid-walk. One shared keyset pager on
+the primary key (`id=gt.<last>`) replaced all three.
