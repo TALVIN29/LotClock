@@ -115,7 +115,16 @@ def listings(rows: list[dict], days: list[str], n: int = EXIT_N) -> list[dict]:
             "model": model,
             "year": raw.get("year"),
             "condition": raw.get("condition"),
-            "transmission": raw.get("transmission"),
+            # Not a transmission category -- motortrader prints an AUTO badge and
+            # prints nothing at all otherwise, so the column only ever held "AUTO"
+            # or null across 12,595 rows. Shipping that as `transmission` invites the
+            # one operation that destroys it: filling the nulls with the mode.
+            # Absence leans manual but does not prove it -- among null-badge rows 19.3%
+            # say MANUAL/MT/x-SPEED in the title vs 1.65% of AUTO-badged rows (2026-09-10),
+            # and their other fields are also sparser (mileage 81.6% vs 99.3%), so some
+            # absences are thin cards rather than manual cars. Hence a badge flag with no
+            # null state, not a guess at the gearbox.
+            "is_automatic": int(bool(raw.get("transmission"))),
             "mileage_band": raw.get("mileage_band"),
             "location_state": raw.get("location_state"),
             "first_price_myr": prices[0] if prices else None,

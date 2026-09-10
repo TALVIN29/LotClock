@@ -32,7 +32,8 @@ One row per listing observed on a full-census **observation day**.
 |---|---|
 | `listing_id` | stable site id |
 | `make`, `model` | first two tokens after the year in the title (see caveats) |
-| `year`, `condition`, `transmission`, `mileage_band`, `location_state` | as listed |
+| `year`, `condition`, `mileage_band`, `location_state` | as listed |
+| `is_automatic` | 1 if the card carried an AUTO badge, 0 if it carried none. **Not a gearbox label** — see below |
 | `first_price_myr`, `last_price_myr` | first and last asking price observed, MYR |
 | `price_cut_myr` | first minus last, 0 if never cut |
 | `observed_days_seen` | number of observation days the listing appeared on |
@@ -41,6 +42,29 @@ One row per listing observed on a full-census **observation day**.
 | `listed_before_census` | 1 if already present in the partial era (left-truncated) |
 
 ## How to use it honestly
+
+- **`is_automatic` is a badge, not a gearbox.** Motortrader prints `AUTO` on
+  automatic listings and prints nothing at all on the rest. Across 12,595 rows on
+  2026-09-10 the field held `AUTO` 12,035 times and null 560 times — `MANUAL` never
+  once, though the parser has always accepted it. So the old `transmission` column
+  was a constant plus a hole, and the routine fix for a hole (fill with the mode)
+  would have stamped AUTO onto every non-automatic car in the set.
+  Absence leans manual without proving it: 19.3% of null-badge rows say
+  MANUAL / MT / x-SPEED in their own title versus 1.65% of AUTO-badged rows, a 12x
+  lift — but their other fields are sparser too (mileage present 81.6% vs 99.3%),
+  so some absences are thin cards rather than manual cars. Treat `is_automatic = 0`
+  as "the site did not claim automatic", nothing stronger.
+
+- **This is a Klang Valley dataset, not a national one.** Kuala Lumpur is 67.0% of
+  rows and Selangor 31.6% — 98.6% between them. Nine states appear at all, out of
+  16; Penang is 7 listings, Kedah 3. Any state-level comparison outside KL/Selangor
+  is built on dozens of rows, and nothing here supports a claim about Malaysia.
+
+- **Two populations share the `condition` column.** RECOND is 52.5% of rows, USED
+  46.1%, NEW 1.3%. Recond units are importer stock and turn over on a different
+  clock than owner-sold used cars; a single survival curve over the pool describes
+  neither. Split before fitting.
+
 
 - **Do not pool the coverage eras.** Pre-2026-08-09 harvested ~15% of the site.
 - **Duration is in observed days, not calendar days.** Collection has gaps.
