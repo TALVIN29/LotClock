@@ -11,9 +11,12 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 import urllib.request
+from datetime import date
+from pathlib import Path
 
 from scraper import fetch, store
 from scraper.parse import parse_index
@@ -33,6 +36,40 @@ MAX_PAGES = 700
 # walked off the end of the real results.
 EMPTY_PAGE_LIMIT = 3
 
+# 2026-09-11..13 were lost with the scrape itself working: Supabase was unhealthy
+# (Disk IO exhausted), every write 504'd, and the parsed rows died with the process.
+# A listing that disappears can never be scraped for a past day, so a dead database
+# must cost a delay, not the day. Failed batches land here, keyed by their day, and
+# the next run replays them. data/ is gitignored.
+SPOOL = Path(__file__).resolve().parent.parent / "data" / "spool"
+
+
+def spool(rows: list[dict], day: date) -> None:
+    SPOOL.mkdir(parents=True, exist_ok=True)
+    with open(SPOOL / f"{day.isoformat()}.jsonl", "a", encoding="utf-8") as f:
+        for r in rows:
+            f.write(json.dumps(r) + "\n")
+
+
+def replay_spool() -> int:
+    """Write spooled days back to Supabase. Returns rows still stuck on disk.
+
+    Safe to repeat: save_snapshots is idempotent on (listing_id, scraped_at), so a
+    file replayed twice, or overlapping a later partial write, cannot duplicate.
+    """
+    stuck = 0
+    for path in sorted(SPOOL.glob("*.jsonl")):
+        rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+        try:
+            store.save_snapshots(rows, scraped_at=date.fromisoformat(path.stem))
+        except Exception as e:
+            print(f"spool {path.name}: still cannot write ({type(e).__name__}), kept", file=sys.stderr)
+            stuck += len(rows)
+            continue
+        path.unlink()
+        print(f"spool {path.name}: replayed {len(rows)} rows")
+    return stuck
+
 
 def collect(max_listings: int = MAX_LISTINGS, *, write: bool = True) -> tuple[dict[str, dict], int, int]:
     """Walk the index, flushing snapshots to Supabase as we go.
@@ -42,18 +79,32 @@ def collect(max_listings: int = MAX_LISTINGS, *, write: bool = True) -> tuple[di
     whole day -- which already happened once (07-24, ^C, zero rows). Because
     `save_snapshots` is idempotent on (listing_id, scraped_at), a partial write plus
     a later re-run compose into a complete day with no reconciliation needed.
+
+    A batch the database refuses is spooled to disk instead of ending the run.
+    After the first refusal the rest of the walk spools without trying: each failed
+    write already burns ~3 minutes of retries, times ~25 batches.
     """
     seen: dict[str, dict] = {}
     buffer: list[dict] = []
     failed = 0
     barren = 0
     written = 0
+    db_down = False
+    day = date.today()
 
     def flush() -> None:
-        nonlocal written, buffer
+        nonlocal written, buffer, db_down
         if write and buffer:
-            written += store.save_snapshots(buffer)
-            print(f"  flushed {len(buffer)} rows, {written} written so far")
+            if not db_down:
+                try:
+                    written += store.save_snapshots(buffer, scraped_at=day)
+                    print(f"  flushed {len(buffer)} rows, {written} written so far")
+                except Exception as e:
+                    db_down = True
+                    print(f"  DB write failed ({type(e).__name__}: {e}), spooling to disk", file=sys.stderr)
+            if db_down:
+                spool(buffer, day)
+                print(f"  spooled {len(buffer)} rows")
         buffer = []
 
     for page in range(1, MAX_PAGES + 1):
@@ -110,12 +161,23 @@ def main() -> int:
                     help="exit early when another host already took today's snapshot")
     args = ap.parse_args()
 
-    if args.skip_if_collected and not args.dry_run and store.already_collected():
-        # Second collector on a day the first one already covered. Exit 0 and
-        # ping, because "nothing to do" is a healthy outcome, not a miss.
-        print("today already collected by another host, skipping")
-        ping_healthcheck()
-        return 0
+    if not args.dry_run:
+        replay_spool()  # an earlier day's rows go in before today's walk adds load
+
+    if args.skip_if_collected and not args.dry_run:
+        try:
+            done = store.already_collected()
+        except Exception as e:
+            # Can't tell -- the database is the thing that's down. Walk anyway: an
+            # unneeded census costs politeness, a skipped one can cost the day.
+            print(f"cannot check today's count ({type(e).__name__}), collecting anyway", file=sys.stderr)
+            done = False
+        if done:
+            # Second collector on a day the first one already covered. Exit 0 and
+            # ping, because "nothing to do" is a healthy outcome, not a miss.
+            print("today already collected by another host, skipping")
+            ping_healthcheck()
+            return 0
 
     seen, failed, written = collect(args.max, write=not args.dry_run)
     records = list(seen.values())
@@ -127,14 +189,25 @@ def main() -> int:
             print(" ", r)
         return 0
 
+    # Last chance for this run: the database may have recovered during the walk.
+    stuck = replay_spool()
+
     # The rows are already in the database -- the walk wrote them as it went -- so
     # this can no longer gate the write. It labels the day instead. A thin day
     # recorded as thin is usable; a thin day thrown away leaves a hole that is
     # indistinguishable from a day nobody looked.
     thin = len(records) < MIN_EXPECTED
-    store.log_run("motortrader", written, failed,
-                  "under_threshold" if thin else "ok")
+    try:
+        store.log_run("motortrader", written, failed,
+                      "under_threshold" if thin else "ok")
+    except Exception as e:
+        print(f"log_run failed: {type(e).__name__}", file=sys.stderr)
     print(f"wrote {written} snapshot rows")
+
+    if stuck:
+        # Data is safe on disk but not in the database. Stay red until a replay lands.
+        print(f"FAIL: {stuck} rows spooled in {SPOOL}, database unreachable", file=sys.stderr)
+        return 1
 
     if thin:
         # Loud failure: a non-zero exit emails, and withholding the ping lets the
