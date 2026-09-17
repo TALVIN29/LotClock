@@ -24,7 +24,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      # No pip install: the scraper is stdlib-only.
+      - run: pip install scrapling==0.4.12
 
       - name: Run scraper
         env:
@@ -47,5 +47,5 @@ jobs:
           python-version: "3.12"
       # Not -r requirements.txt: that pulls jupyter/sklearn/pandas for the
       # modelling side, none of which the parser tests touch.
-      - run: pip install pytest
+      - run: pip install pytest scrapling==0.4.12
       - run: python -m pytest tests -q
