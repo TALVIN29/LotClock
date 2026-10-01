@@ -38,7 +38,7 @@ One row per listing observed on a full-census **observation day**.
 | `price_cut_myr` | first minus last, 0 if never cut |
 | `observed_days_seen` | number of observation days the listing appeared on |
 | `duration_obs_days` | first-to-last sighting, inclusive, in **observed** days |
-| `absent_ge_5_obs_days` | 1 if not seen for 5 consecutive observation days. **An absence, not an exit** — renamed from `event_exited` in the 2026-08-25 version, see below |
+| `absent_ge_7_obs_days` | 1 if not seen for 7 consecutive observation days: **the ad is gone, not "sold"**. Replaces `absent_ge_5_obs_days` from the 2026-10-01 version, see below |
 | `listed_before_census` | 1 if already present in the partial era (left-truncated) |
 
 ## How to use it honestly
@@ -67,21 +67,22 @@ One row per listing observed on a full-census **observation day**.
 
 
 - **Do not pool the coverage eras.** Pre-2026-08-09 harvested ~15% of the site.
+  Pooling them is exactly what produced the withdrawn 60.2% figure below.
 - **Duration is in observed days, not calendar days.** Collection has gaps.
-- **`absent_ge_5_obs_days` is not an event, and not "sold".** This column was
-  called `event_exited` in earlier versions and that name was wrong. Refitting
-  the exit rule on the full window found that **60.2% of 5-day absences still
-  come back**, and that no absence threshold clears a 5% reversal bar on the
-  evidence available. Treat this column as "was not seen for a while" and
-  nothing more.
-- **Do not fit a survival model on this dataset.** The exit event is not in the
-  data: listing removal is dominated by expiries, relists and crawl misses, with
-  sales unlabelled inside it. More collection days do not separate them — this
-  is a structural limit, not a sample-size problem. Full argument:
+- **`absent_ge_7_obs_days` means the ad is gone, not that the car sold.** The
+  census-only refit (2026-10-01) found **2.4% of 7-day absences come back**, and
+  103 listings gone 20+ observation days with zero returns, so 7 days is a
+  defensible "ad removed" rule. Earlier versions shipped `absent_ge_5_obs_days`
+  (before that `event_exited`) with a 60.2% return rate — that rate came from
+  pooling partial-harvest days and is withdrawn; census-only, 5 days reverses 25.8%.
+- **Survival here is ad lifetime, not days-to-sell.** Removal still mixes
+  expiries, relists and sales, unlabelled. And 98.5% of listings are censored
+  (only ~1.5% of the 2026-08-09 stock was gone by 2026-10-01), so expect a lower
+  bound, not a median. Split RECOND / USED before fitting. Full argument:
   <https://lotclock.netlify.app>
-- **Coverage is not perfectly stable even within the census era**: 81% of
-  single-day absences reverse the next day (the site reorders under the crawl).
-  That is why the exit threshold is 5 days, not 1.
+- **Coverage is not perfectly stable even within the census era**: 95% of
+  single-day absences reverse (the site reorders under the crawl). That is why
+  the threshold is 7 days, not 1.
 
 ## Known caveats
 
@@ -103,7 +104,7 @@ redistributed — this release is derived tables only.
 ## Updates
 
 Collection is ongoing; the release is refreshed as the observation window grows.
-The days-on-market question becomes answerable as it does.
+Days-to-sell does not become answerable with time: that needs a labelled sale.
 
-Source code: <https://github.com/talvin29/LotClock> · first analysis writeup:
-<https://talvin29.github.io/LotClock/teardown-01>
+Source code: <https://github.com/talvin29/LotClock> · write-ups:
+<https://lotclock.netlify.app>

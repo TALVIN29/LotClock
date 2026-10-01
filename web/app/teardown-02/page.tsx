@@ -14,6 +14,13 @@ export default function Teardown02() {
             number is not in the data, and more data made that worse, not better. This
             is the write-up of why.
           </p>
+          <p className="card caption" style={{ marginTop: 16 }}>
+            <span className="tag">Superseded</span>{" "}
+            Sections 1–2 were fitted on pooled partial-harvest and census days. The
+            census-only refit in <a href="/">teardown 04</a> finds a defensible exit
+            rule (7 observed days) and withdraws &ldquo;no N exists&rdquo;. Kept as
+            published.
+          </p>
           <div className="grid cols-3" style={{ marginTop: 24 }}>
             <div className="card metric">
               <span className="big">13,172</span>
@@ -234,7 +241,8 @@ export default function Teardown02() {
             <a href="https://www.kaggle.com/datasets/talvinlee/malaysian-used-car-listings-daily-snapshots">
               Daily snapshots on Kaggle
             </a>{" "}
-            · <a href="/">Teardown 03: whose cars are these?</a> ·{" "}
+            · <a href="/">Teardown 04: the wall was partly mine</a> ·{" "}
+            <a href="/teardown-03">Teardown 03: whose cars are these?</a> ·{" "}
             <a href="/price-model">Earlier price-model demo</a>
           </p>
         </footer>

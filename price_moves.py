@@ -31,7 +31,7 @@ from collections import defaultdict
 from exit_rule import load_env
 
 CENSUS_FROM = "2026-08-09"   # first full-census day; window is everything before it
-EXIT_N = 5                   # observed days absent before a listing counts as gone
+EXIT_N = 7                   # observed days absent before a listing counts as gone (census refit 2026-10-01: 2.4% reverse)
 COMPLETE_MIN = 10_000        # rows a census day must clear to count as observed
 
 

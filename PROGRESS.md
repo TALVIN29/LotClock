@@ -965,3 +965,31 @@ OFFSET paging, costing O(rows²/page) row visits — ~47M at 306k rows, growing
 quadratically per collection day. That drained the project's Supabase Disk IO
 budget and finally 500'd `kaggle_export.py` mid-walk. One shared keyset pager on
 the primary key (`id=gt.<last>`) replaced all three.
+
+## 2026-10-01 — monthly refit: the censoring wall was a pooling error
+
+`exit_rule.py` fitted on every collected day, partial-harvest era included. On a
+~15%-coverage day nearly every listing is "absent", so those days manufactured long
+absences that later "came back". That produced teardown-02's 60.2%-at-5-days and its
+"no N clears 5%". Census-only (38 observation days to 2026-10-01):
+
+     N   reached   came back   return rate
+     5       275          71       25.8%
+     6       215          14        6.5%
+     7       206           5        2.4%
+     8       203           2        1.0%
+
+Longest closed gap is 8 observed days; past it the zero is now backed by exposure
+(103 absences of 20+ days, 43 of 30+, zero returns), not by the window ending.
+`choose_n()` picks **N = 7** on rows with real returns. `exit_rule.py` now filters to
+census observation days via `price_moves.observed_days`; `EXIT_N` 5 -> 7.
+
+What sits behind the wall: of 12,392 listings on 2026-08-09, 94.9% still listed on
+10-01, 1.5% gone under N=7. 201 exits of 13,589 total, 98.5% censored. Cut rate 2.18%
+(295), exits cut 6.5% vs 2.1% still listed (13 of 201, small).
+
+Shipped: `docs/teardown-04.md` + site home (old home moved to `/teardown-03`,
+teardown-02 carries a Superseded note). `ReturnCurve` draws pooled vs census.
+Kaggle column `absent_ge_5_obs_days` -> `absent_ge_7_obs_days`, data card and metadata
+rewritten (survival here = ad lifetime, never days-to-sell). Not changed: the Kaggle
+starter notebook still references `event_exited`.

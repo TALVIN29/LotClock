@@ -112,9 +112,17 @@ def choose_n(rows, threshold: float = 0.05) -> int | None:
 
 def main() -> int:
     load_env()
+    from price_moves import observed_days
+
     presence = fetch_presence()
-    days = sorted({d for ds in presence.values() for d in ds})
-    print(f"{len(presence)} listings across {len(days)} observed days\n")
+    # Census era only, killed walks dropped. A partial-harvest day misses ~85%
+    # of the site, so pooling it in reads sampling holes as absences -- that is
+    # what inflated teardown-02's return curve (60.2% at 5 days pooled vs
+    # 25.8% census-only, refit 2026-10-01).
+    days = observed_days(presence, census=True)
+    keep = set(days)
+    presence = {k: v & keep for k, v in presence.items() if v & keep}
+    print(f"{len(presence)} listings across {len(days)} census observed days\n")
 
     hist = gap_lengths(presence, days)
     trailing = trailing_absences(presence, days)
@@ -137,7 +145,7 @@ def main() -> int:
     else:
         exits = sum(c for g, c in trailing.items() if g >= n)
         print(f"\nN = {n}: absent {n} observed days in a row reverses <5% of the time.")
-        print(f"Under that rule, {exits} listings count as exited (vs 295 by naive last-seen).")
+        print(f"Under that rule, {exits} of {len(presence)} listings count as exited.")
     return 0
 
 

@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "LotClock — the listings will not tell you how long a car takes to sell",
+  title: "LotClock — Malaysian used-car listings, measured daily",
   description:
-    "Five weeks of daily Malaysian used-car listing snapshots, and why days-to-sell is not in the data.",
+    "Daily snapshots of Malaysian used-car listings since July 2026: what the ads show, and what they cannot.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
