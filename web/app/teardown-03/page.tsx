@@ -268,6 +268,7 @@ export default function Teardown03() {
               Daily snapshots on Kaggle
             </a>{" "}
             · <a href="/">Teardown 04: the wall was partly mine</a> ·{" "}
+            <a href="/">Final note: why collection stopped</a> · <a href="/teardown-04">Teardown 04: the wall was partly mine</a> ·{" "}
             <a href="/teardown-02">Teardown 02: the censoring wall</a> ·{" "}
             <a href="/price-model">Earlier price-model demo</a>
           </p>

@@ -242,6 +242,7 @@ export default function Teardown02() {
               Daily snapshots on Kaggle
             </a>{" "}
             · <a href="/">Teardown 04: the wall was partly mine</a> ·{" "}
+            <a href="/">Final note: why collection stopped</a> · <a href="/teardown-04">Teardown 04: the wall was partly mine</a> ·{" "}
             <a href="/teardown-03">Teardown 03: whose cars are these?</a> ·{" "}
             <a href="/price-model">Earlier price-model demo</a>
           </p>

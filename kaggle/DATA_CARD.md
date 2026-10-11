@@ -1,7 +1,7 @@
 # LotClock — Malaysian used-car listings, daily snapshots
 
 **What it is.** Daily snapshots of a Malaysian used-car listing index
-(motortrader.com.my), collected since 2026-07-19 and still running. Append-only:
+(motortrader.com.my), collected 2026-07-19 to 2026-10-11 (collection ended). Append-only:
 a price change is a new dated row, never an overwrite. That is what makes price
 cuts and delistings measurable at all.
 
@@ -103,7 +103,7 @@ redistributed — this release is derived tables only.
 
 ## Updates
 
-Collection is ongoing; the release is refreshed as the observation window grows.
+Collection ended 2026-10-11. This is the final release: 67 collection days, 48 full-census observation days, 13,683 census-era listings.
 Days-to-sell does not become answerable with time: that needs a labelled sale.
 
 Source code: <https://github.com/talvin29/LotClock> · write-ups:
